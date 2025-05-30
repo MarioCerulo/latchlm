@@ -8,7 +8,7 @@ description = "Core traits and types for the LatchLM ecosystem"
 repository = { workspace = true }
 keywords = { workspace = true }
 categories = { workspace = true }
-publish = false
+publish = true
 
 [dependencies]
 thiserror = { workspace = true }

@@ -8,6 +8,7 @@ description = "A provider-agnostic client library for AI models"
 repository = { workspace = true }
 keywords = { workspace = true }
 categories = { workspace = true }
+publish = true
 
 [features]
 default = ["latchlm-core"]
