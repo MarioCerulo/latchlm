@@ -1,0 +1,14 @@
+*
+
+!.gitignore
+!Cargo.toml
+!Cargo.lock
+!deny.toml
+!README.md
+!LICENSE.txt
+
+!core/
+!core/**
+
+!latchlm/
+!latchlm/**

@@ -1,0 +1,19 @@
+[package]
+name = "latchlm"
+version = "0.1.0"
+edition = { workspace = true }
+authors = { workspace = true }
+license = { workspace = true }
+description = "A provider-agnostic client library for AI models"
+repository = { workspace = true }
+keywords = { workspace = true }
+categories = { workspace = true }
+
+[features]
+default = ["latchlm-core"]
+full = ["default"]
+
+[dependencies]
+latchlm-core = { version = "0.1.0", path = "../core", optional = true }
+
+thiserror = { workspace = true }
