@@ -7,8 +7,14 @@
 !README.md
 !LICENSE.txt
 
+!.github/
+!.github/**
+
 !.cargo/
-!.cargo/*
+!.cargo/**
+
+!docs/
+!docs/**
 
 !core/
 !core/**

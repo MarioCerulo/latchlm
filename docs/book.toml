@@ -1,0 +1,5 @@
+[book]
+authors = ["Mario Cerulo"]
+language = "en"
+src = "src"
+title = "LatchLM"
