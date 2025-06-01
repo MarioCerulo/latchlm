@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["latchlm", "core"]
+members = ["latchlm", "core", "gemini"]
 
 [workspace.package]
 edition = "2024"
@@ -14,6 +14,12 @@ categories = ["api-bindings", "asynchronous"]
 thiserror = "2.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
+
+strum = "0.27.1"
+strum_macros = "0.27.1"
+tokio = { version = "1.45", features = ["macros", "rt-multi-thread"] }
+secrecy = "0.10.3"
+wiremock = "0.6"
 
 [workspace.dependencies.reqwest]
 version = "0.12"

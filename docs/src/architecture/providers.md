@@ -2,6 +2,10 @@
 
 In LatchLM a provider is a struct that implements the `AiProvider` trait, encapsulating the logic to interact with a given API.
 
+## First-party Providers
+
+LatchLM currently provides, with experimental support, a provider for the Gemini APi. More providers will follow.
+
 ## Implementing a provider
 
 Below is an example of how you can implement a custom provider.

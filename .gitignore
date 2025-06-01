@@ -21,3 +21,6 @@
 
 !latchlm/
 !latchlm/**
+
+!gemini/
+!gemini/**
