@@ -5,7 +5,7 @@ on:
     branches:
       - main
     paths:
-      - "latchlm/docs/**"
+      - "docs/**"
 
 permissions:
   contents: read
@@ -28,14 +28,14 @@ jobs:
       - name: Install mdBook
         run: cargo install mdbook --locked
       - name: Build the book
-        working-directory: latchlm/docs
+        working-directory: docs
         run: mdbook build
       - name: Setup Pages
         uses: actions/configure-pages@v4
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: latchlm/docs/book
+          path: docs/book
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4

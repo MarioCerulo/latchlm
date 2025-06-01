@@ -27,7 +27,6 @@ jobs:
 
       - name: Build
         run: cargo build
-        working-directory: latchlm
 
   test:
     name: Test
@@ -44,7 +43,6 @@ jobs:
 
       - name: Run Tests
         run: cargo test --workspace
-        working-directory: latchlm
 
   format:
     name: Format
@@ -62,7 +60,6 @@ jobs:
 
       - name: Check formatting
         run: cargo fmt --all -- --check
-        working-directory: latchlm
 
   lint:
     name: Lint
@@ -80,7 +77,6 @@ jobs:
 
       - name: Run Clippy
         run: cargo clippy --all-targets --all-features -- -D warnings
-        working-directory: latchlm
 
   dependencies:
     name: Dependencies
@@ -100,7 +96,6 @@ jobs:
 
       - name: Check Dependencies
         run: cargo deny check
-        working-directory: latchlm
 
   audit:
     name: Dependencies Audit
