@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["latchlm", "core", "gemini"]
+members = ["latchlm", "core", "gemini", "xtask"]
 
 [workspace.package]
 edition = "2024"

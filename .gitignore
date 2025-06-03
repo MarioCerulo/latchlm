@@ -7,6 +7,9 @@
 !README.md
 !LICENSE.txt
 
+!flake.nix
+!flake.lock
+
 !.github/
 !.github/**
 
@@ -24,3 +27,6 @@
 
 !gemini/
 !gemini/**
+
+!xtask/
+!xtask/**
