@@ -27,7 +27,7 @@ impl AiProvider for MyProvider {
         // Box::pin(async move {
         //      // Build and send an HTTP request with self.client.
         //      // Use model.as_ref() to obtain the identifier.
-        //      // Process the response and contruct an AiResponse.
+        //      // Process the response and construct an AiResponse.
         //      OK(AiResponse { text: "Example response text".into() })
         // })
     }

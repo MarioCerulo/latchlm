@@ -54,4 +54,4 @@ match result {
 ```
 
 ## Extensibility
-The `Error` enum is marked as `#[non_exaustive]`, which means additional variants may be added in the future.
+The `Error` enum is marked as `#[non_exhaustive]`, which means additional variants may be added in the future.
