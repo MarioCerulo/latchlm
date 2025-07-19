@@ -17,9 +17,9 @@ use std::{future::Future, pin::Pin, sync::Arc};
 
 /// A `Future` type used by the `AiProvider` trait.
 ///
-/// This type alias represents a boxed, pinned future that is `Send` and `'static`,
+/// This type alias represents a boxed, pinned future that is `Send`,
 /// which allows to be returned from async traits.
-pub type BoxFuture<T> = Pin<Box<dyn Future<Output = T> + Send + 'static>>;
+pub type BoxFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
 
 /// A marker trait representing a specific AI model for a provider.
 ///
@@ -104,7 +104,7 @@ pub trait AiProvider: Send + Sync {
         &self,
         model: &dyn AiModel,
         request: AiRequest,
-    ) -> BoxFuture<Result<AiResponse>>;
+    ) -> BoxFuture<'_, Result<AiResponse>>;
 }
 
 impl<T> AiProvider for &T
@@ -115,7 +115,7 @@ where
         &self,
         model: &dyn AiModel,
         request: AiRequest,
-    ) -> BoxFuture<Result<AiResponse>> {
+    ) -> BoxFuture<'_, Result<AiResponse>> {
         (**self).send_request(model, request)
     }
 }
@@ -128,7 +128,7 @@ where
         &self,
         model: &dyn AiModel,
         request: AiRequest,
-    ) -> BoxFuture<Result<AiResponse>> {
+    ) -> BoxFuture<'_, Result<AiResponse>> {
         (**self).send_request(model, request)
     }
 }
@@ -141,7 +141,7 @@ where
         &self,
         model: &dyn AiModel,
         request: AiRequest,
-    ) -> BoxFuture<Result<AiResponse>> {
+    ) -> BoxFuture<'_, Result<AiResponse>> {
         (**self).send_request(model, request)
     }
 }
@@ -154,7 +154,7 @@ where
         &self,
         model: &dyn AiModel,
         request: AiRequest,
-    ) -> BoxFuture<Result<AiResponse>> {
+    ) -> BoxFuture<'_, Result<AiResponse>> {
         (**self).send_request(model, request)
     }
 }
