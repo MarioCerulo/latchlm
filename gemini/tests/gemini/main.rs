@@ -1,3 +1,7 @@
+// This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0.
+// If a copy of the MPL was not distributed with this file, You can obtain one at
+// https://mozilla.org/MPL/2.0/.
+
 use latchlm_core::{AiProvider, AiRequest, Error};
 use latchlm_gemini::{Gemini, GeminiModel};
 use secrecy::{ExposeSecret, SecretString};
@@ -12,26 +16,42 @@ async fn test_gemini_request_response() {
     let mock_server = MockServer::start().await;
     let mock_base_url = mock_server.uri();
 
-    let model = GeminiModel::Flash;
-    let mock_response_body = r#"{
-        "candidates": [{
-            "content": {
-                "parts": [{
-                    "text": "This is a mock response"
-                }]
+    let model = GeminiModel::Flash25;
+
+    // Replace direct struct instantiation with a JSON string
+    let mock_response_body = serde_json::json!({
+        "candidates": [
+            {
+                "content": {
+                    "parts": [
+                        {
+                            "text": "This is a mock response"
+                        }
+                    ]
+                },
+                "finishReason": "STOP",
+                "index": 0
             }
-        }]
-    }"#;
+        ],
+        "usageMetadata": {
+            "promptTokenCount": 0,
+            "candidatesTokenCount": 0,
+            "totalTokenCount": 0,
+            "promptTokensDetails": []
+        },
+        "modelVersion": "",
+        "responseId": ""
+    });
 
     let test_api_key = SecretString::from("test_api_key");
 
     // Setup the mock
-    Mock::given(method("POST"))
+    let _mock_guard = Mock::given(method("POST"))
         .and(path_regex(r".+:generateContent$"))
         .and(header("x-goog-api-key", test_api_key.expose_secret()))
-        .respond_with(ResponseTemplate::new(200).set_body_string(mock_response_body))
+        .respond_with(ResponseTemplate::new(200).set_body_json(mock_response_body))
         .expect(1)
-        .mount(&mock_server)
+        .mount_as_scoped(&mock_server)
         .await;
 
     // Create client with mock server URL
@@ -58,20 +78,20 @@ async fn test_gemini_error_handling() {
     let mock_server = MockServer::start().await;
     let mock_base_url = mock_server.uri();
 
-    let model = GeminiModel::Flash;
-    let error_response_body = r#"{
+    let model = GeminiModel::Flash25;
+    let error_response_body = serde_json::json!({
         "error": {
             "code": 401,
             "message": "UNAUTHENTICATED"
         }
-    }"#;
+    });
 
     // Setup the mock to return 400 error
-    Mock::given(method("POST"))
+    let _mock_guard = Mock::given(method("POST"))
         .and(path_regex(r".+:generateContent$"))
-        .respond_with(ResponseTemplate::new(401).set_body_string(error_response_body))
+        .respond_with(ResponseTemplate::new(401).set_body_json(error_response_body))
         .expect(1)
-        .mount(&mock_server)
+        .mount_as_scoped(&mock_server)
         .await;
 
     // Create client with mock server URL and invalid API key

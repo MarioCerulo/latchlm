@@ -707,6 +707,8 @@ dependencies = [
 [[package]]
 name = "latchlm-core"
 version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a4a49765bfad5727962e537c035b0fcf1c23e44300ea1c45187d63c82ab0a74f"
 dependencies = [
  "reqwest",
  "serde",
@@ -716,9 +718,19 @@ dependencies = [
 
 [[package]]
 name = "latchlm-core"
-version = "0.1.0"
+version = "0.2.0"
+dependencies = [
+ "reqwest",
+ "serde",
+ "serde_json",
+ "thiserror",
+]
+
+[[package]]
+name = "latchlm-core"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a4a49765bfad5727962e537c035b0fcf1c23e44300ea1c45187d63c82ab0a74f"
+checksum = "a37904f10cf2fdbe71c86b8ec11a3f18c82e9463e086ca4d11fc7e512c2b9031"
 dependencies = [
  "reqwest",
  "serde",
@@ -730,7 +742,7 @@ dependencies = [
 name = "latchlm-gemini"
 version = "0.1.0"
 dependencies = [
- "latchlm-core 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "latchlm-core 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "reqwest",
  "secrecy",
  "serde",

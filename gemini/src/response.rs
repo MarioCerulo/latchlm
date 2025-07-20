@@ -5,29 +5,74 @@
 //! This module contains the structs used to deserialize
 //! the Gemini API responses
 
-use serde::Deserialize;
+use latchlm_core::{AiResponse, TokenUsage};
+use serde::{Deserialize, Serialize};
 
-#[derive(Deserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Default)]
 pub struct Text {
-    text: String,
+    pub text: String,
 }
 
-#[derive(Deserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct Content {
-    parts: Vec<Text>,
+    pub parts: Vec<Text>,
 }
 
-#[derive(Deserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct Candidate {
     content: Content,
+    finish_reason: String,
+    index: Option<u64>,
+    avg_log_probs: Option<i64>,
 }
 
-#[derive(Deserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Default)]
+#[serde(rename_all = "camelCase")]
+struct PromptTokensDetails {
+    modality: String,
+    token_count: u64,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Default)]
+#[serde(rename_all = "camelCase")]
+struct CandidatesTokensDetails {
+    modality: String,
+    token_count: u64,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct UsageMetadata {
+    prompt_token_count: u64,
+    candidates_token_count: u64,
+    total_token_count: u64,
+    prompt_tokens_details: Vec<PromptTokensDetails>,
+    thoughts_token_count: Option<u64>,
+    candidates_tokens_details: Option<Vec<CandidatesTokensDetails>>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct GeminiResponse {
     candidates: Vec<Candidate>,
+    usage_metadata: UsageMetadata,
+    model_version: String,
+    response_id: String,
+}
+
+impl From<GeminiResponse> for AiResponse {
+    fn from(value: GeminiResponse) -> AiResponse {
+        AiResponse {
+            text: value.extract_text(),
+            token_usage: TokenUsage {
+                input_tokens: Some(value.usage_metadata.prompt_token_count),
+                output_tokens: Some(value.usage_metadata.candidates_token_count),
+                total_tokens: Some(value.usage_metadata.total_token_count),
+            },
+        }
+    }
 }
 
 impl GeminiResponse {
@@ -64,6 +109,7 @@ mod test {
                             },
                         ],
                     },
+                    ..Default::default()
                 },
                 Candidate {
                     content: Content {
@@ -71,8 +117,12 @@ mod test {
                             text: "Another candidate.".to_string(),
                         }],
                     },
+                    finish_reason: String::new(),
+                    index: Some(0),
+                    avg_log_probs: None,
                 },
             ],
+            ..Default::default()
         };
 
         assert_eq!(
@@ -83,7 +133,7 @@ mod test {
 
     #[test]
     fn test_extract_text_empty_response() {
-        let test_response = GeminiResponse { candidates: vec![] };
+        let test_response = GeminiResponse::default();
 
         assert_eq!(test_response.extract_text(), "");
     }
@@ -93,7 +143,9 @@ mod test {
         let test_response = GeminiResponse {
             candidates: vec![Candidate {
                 content: Content { parts: vec![] },
+                ..Default::default()
             }],
+            ..Default::default()
         };
 
         assert_eq!(test_response.extract_text(), "");

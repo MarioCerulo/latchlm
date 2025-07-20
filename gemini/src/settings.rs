@@ -5,7 +5,7 @@
 //! This module implements a client for interacting with the Gemini API,
 //! including support for model variants and structured error handling.
 
-use std::sync::Arc;
+use std::{future::ready, sync::Arc};
 
 use latchlm_core::{AiModel, AiProvider, AiRequest, AiResponse, BoxFuture, Error, ModelId, Result};
 
@@ -24,11 +24,11 @@ use crate::GeminiResponse;
 #[serde(try_from = "&str")]
 #[non_exhaustive]
 pub enum GeminiModel {
-    Flash,
-    FlashPro,
-    FlashLite,
+    Flash20,
+    Flash20Lite,
+    Flash25,
+    Pro25,
     FlashThinking,
-    Flash25Preview,
 }
 
 impl std::fmt::Display for GeminiModel {
@@ -41,11 +41,11 @@ impl TryFrom<&str> for GeminiModel {
     type Error = Error;
     fn try_from(value: &str) -> Result<Self> {
         match value {
-            "gemini-2.0-flash" => Ok(Self::Flash),
-            "gemini-2.0-flash-lite" => Ok(Self::FlashLite),
+            "gemini-2.0-flash" => Ok(Self::Flash20),
+            "gemini-2.0-flash-lite" => Ok(Self::Flash20Lite),
             "gemini-2.0-flash-thinking-exp-01-21" => Ok(Self::FlashThinking),
-            "gemini-2.5-pro-exp-03-25" => Ok(Self::FlashPro),
-            "gemini-2.5-flash-preview-04-17" => Ok(Self::Flash25Preview),
+            "gemini-2.5-flash" => Ok(Self::Flash25),
+            "gemini-2.5-pro" => Ok(Self::Pro25),
             invalid_model => Err(Error::InvalidModelError(invalid_model.to_owned())),
         }
     }
@@ -54,42 +54,46 @@ impl TryFrom<&str> for GeminiModel {
 impl AsRef<str> for GeminiModel {
     fn as_ref(&self) -> &str {
         match self {
-            GeminiModel::Flash => "gemini-2.0-flash",
-            GeminiModel::FlashPro => "gemini-2.5-pro-exp-03-25",
-            GeminiModel::FlashLite => "gemini-2.0-flash-lite",
+            GeminiModel::Flash20 => "gemini-2.0-flash",
+            GeminiModel::Flash20Lite => "gemini-2.0-flash-lite",
+            GeminiModel::Pro25 => "gemini-2.5-pro",
             GeminiModel::FlashThinking => "gemini-2.0-flash-thinking-exp-01-21",
-            GeminiModel::Flash25Preview => "gemini-2.5-flash-preview-04-17",
+            GeminiModel::Flash25 => "gemini-2.5-flash",
         }
     }
 }
 impl AiModel for GeminiModel {}
 
 impl GeminiModel {
+    /// Get the [`ModelId`] of the specified model
+    ///
+    /// [`ModelId`]: latchlm_core::ModelId
     pub fn model_id(&self) -> ModelId {
         match self {
-            Self::Flash => ModelId {
-                id: "gemini-2.0-flash".to_string(),
+            Self::Flash20 => ModelId {
+                id: self.as_ref().to_string(),
                 name: "Gemini 2.0 Flash".to_string(),
             },
-            Self::FlashPro => ModelId {
-                id: "gemini-2.5-pro-exp-03-25".to_string(),
+            Self::Pro25 => ModelId {
+                id: self.as_ref().to_string(),
                 name: "Gemini 2.5 Pro".to_string(),
             },
-            Self::FlashLite => ModelId {
-                id: "gemini-2.0-flash-lite".to_string(),
+            Self::Flash20Lite => ModelId {
+                id: self.as_ref().to_string(),
                 name: "Gemini 2.0 Flash Lite".to_string(),
             },
             Self::FlashThinking => ModelId {
-                id: "gemini-2.0-flash-thinking-exp-01-21".to_string(),
+                id: self.as_ref().to_string(),
                 name: "Gemini 2.0 Flash Thinking".to_string(),
             },
-            Self::Flash25Preview => ModelId {
-                id: "gemini-2.5-flash-preview-04-17".to_string(),
-                name: "Gemini 2.5 Flash Preview".to_string(),
+            Self::Flash25 => ModelId {
+                id: self.as_ref().to_string(),
+                name: "Gemini 2.5 Flash".to_string(),
             },
         }
     }
 
+    /// Get a `Vec` of all the variants of the model
     pub fn variants() -> Vec<ModelId> {
         Self::iter().map(|variant| variant.model_id()).collect()
     }
@@ -102,12 +106,15 @@ pub struct Gemini {
     api_key: Arc<SecretString>,
 }
 
+// The HTTP header used for authentication with the gemini api
+static X_GOOG_API_KEY: &str = "x-goog-api-key";
+
 impl Gemini {
     /// Create a new `Gemini` client instance.
     ///
     /// # Arguments
     ///
-    /// * `client` - A reference to a preconfigured `reqwest::Client`.
+    /// * `client` - A reference to a preconfigured [`reqwest::Client`].
     /// * `base_url` - The base url for the gemini API.
     /// * `api_key` - The API key wrapped in `SecretString` for secure handling
     pub fn new(client: reqwest::Client, base_url: &str, api_key: SecretString) -> Self {
@@ -117,6 +124,46 @@ impl Gemini {
             api_key: Arc::new(api_key),
         }
     }
+
+    /// Sends a request to the Gemini API.
+    ///
+    /// # Errors
+    ///
+    /// Returns an [`Error`] if the request fails, the response status is not successful,
+    /// or if the response cannot be parsed.
+    ///
+    /// [`Error`]: latchlm_core::Error
+    pub async fn request(&self, model: GeminiModel, request: AiRequest) -> Result<GeminiResponse> {
+        let url = format!("{}/{}:generateContent", self.base_url, model.as_ref());
+        let mut headers = reqwest::header::HeaderMap::new();
+        headers.insert(
+            X_GOOG_API_KEY,
+            HeaderValue::from_str(self.api_key.expose_secret()).expect("Failed to parse header"),
+        );
+
+        let payload = serde_json::json!({"contents": [{"parts": {"text": request.text}}]});
+
+        let response = self
+            .client
+            .post(&url)
+            .headers(headers)
+            .json(&payload)
+            .send()
+            .await?;
+
+        if !response.status().is_success() {
+            return Err(Error::ApiError {
+                status: response.status().as_u16(),
+                message: response.text().await?,
+            });
+        }
+
+        let bytes = response.bytes().await?;
+
+        let response: GeminiResponse = serde_json::from_slice(&bytes)?;
+
+        Ok(response)
+    }
 }
 
 impl AiProvider for Gemini {
@@ -124,49 +171,13 @@ impl AiProvider for Gemini {
         &self,
         model: &dyn AiModel,
         request: AiRequest,
-    ) -> BoxFuture<Result<AiResponse>> {
-        let url = format!("{}/{}:generateContent", self.base_url, model.as_ref());
+    ) -> BoxFuture<'_, Result<AiResponse>> {
+        let Ok(model) = GeminiModel::try_from(model.as_ref()) else {
+            let model_name = model.as_ref().to_owned();
+            return Box::pin(ready(Err(Error::InvalidModelError(model_name))));
+        };
 
-        let client = reqwest::Client::clone(&self.client);
-        let api_key = Arc::clone(&self.api_key);
-        let message = request.text.to_string();
-
-        Box::pin(async move {
-            const X_GOOG_API_KEY: &str = "x-goog-api-key";
-            let mut headers = reqwest::header::HeaderMap::new();
-            headers.insert(
-                X_GOOG_API_KEY,
-                HeaderValue::from_str(api_key.expose_secret()).expect("Failed to parse header"),
-            );
-
-            let payload = serde_json::json!({"contents": [{"parts": {"text": message}}]});
-
-            let mut response = client
-                .post(&url)
-                .headers(headers)
-                .json(&payload)
-                .send()
-                .await?;
-
-            if !response.status().is_success() {
-                return Err(Error::ApiError {
-                    status: response.status().as_u16(),
-                    message: response.text().await?,
-                });
-            }
-
-            let mut buffer = Vec::new();
-
-            while let Some(chunk) = response.chunk().await? {
-                buffer.extend_from_slice(&chunk);
-            }
-
-            let response: GeminiResponse = serde_json::from_slice(&buffer)?;
-
-            Ok(AiResponse {
-                text: response.extract_text(),
-            })
-        })
+        Box::pin(async move { self.request(model, request).await.map(Into::into) })
     }
 }
 
@@ -178,23 +189,19 @@ mod tests {
     fn test_gemini_model_try_from_valid() {
         assert_eq!(
             GeminiModel::try_from("gemini-2.0-flash").unwrap(),
-            GeminiModel::Flash
+            GeminiModel::Flash20
         );
         assert_eq!(
-            GeminiModel::try_from("gemini-2.5-pro-exp-03-25").unwrap(),
-            GeminiModel::FlashPro
+            GeminiModel::try_from("gemini-2.5-pro").unwrap(),
+            GeminiModel::Pro25
         );
         assert_eq!(
             GeminiModel::try_from("gemini-2.0-flash-lite").unwrap(),
-            GeminiModel::FlashLite
+            GeminiModel::Flash20Lite
         );
         assert_eq!(
             GeminiModel::try_from("gemini-2.0-flash-thinking-exp-01-21").unwrap(),
             GeminiModel::FlashThinking
-        );
-        assert_eq!(
-            GeminiModel::try_from("gemini-2.5-flash-preview-04-17").unwrap(),
-            GeminiModel::Flash25Preview
         );
     }
 

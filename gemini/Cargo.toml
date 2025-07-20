@@ -17,7 +17,7 @@ strum = { workspace = true }
 strum_macros = { workspace = true }
 reqwest = { workspace = true }
 secrecy = { workspace = true }
-latchlm-core = "^0.1.0"
+latchlm-core = "0.2.0"
 
 [dev-dependencies]
 wiremock = { workspace = true }
