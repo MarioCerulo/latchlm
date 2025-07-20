@@ -75,6 +75,19 @@ pub struct AiRequest {
 pub struct AiResponse {
     /// The text response
     pub text: String,
+    /// Token usage data
+    pub token_usage: TokenUsage,
+}
+
+/// Token usage information returned by LLM providers.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct TokenUsage {
+    /// Number of tokens in the input prompt
+    pub input_tokens: Option<u64>,
+    /// Number of tokens in the output response
+    pub output_tokens: Option<u64>,
+    /// Total tokens used during the interaction
+    pub total_tokens: Option<u64>,
 }
 
 /// A trait representing an LLM API provider.
