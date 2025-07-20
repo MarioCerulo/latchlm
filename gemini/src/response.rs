@@ -9,26 +9,6 @@ use latchlm_core::{AiResponse, TokenUsage};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Default)]
-pub struct Text {
-    pub text: String,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct Content {
-    pub parts: Vec<Text>,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct Candidate {
-    content: Content,
-    finish_reason: String,
-    index: Option<u64>,
-    avg_log_probs: Option<i64>,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Default)]
 #[serde(rename_all = "camelCase")]
 struct PromptTokensDetails {
     modality: String,
@@ -51,6 +31,26 @@ pub struct UsageMetadata {
     prompt_tokens_details: Vec<PromptTokensDetails>,
     thoughts_token_count: Option<u64>,
     candidates_tokens_details: Option<Vec<CandidatesTokensDetails>>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Default)]
+pub struct Text {
+    pub text: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct Content {
+    pub parts: Vec<Text>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct Candidate {
+    content: Content,
+    finish_reason: String,
+    index: Option<u64>,
+    avg_log_probs: Option<i64>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Default)]
@@ -86,7 +86,8 @@ impl GeminiResponse {
                     .iter()
                     .map(|text| text.text.as_str())
             })
-            .collect()
+            .collect::<Vec<_>>()
+            .join(" ")
     }
 }
 
@@ -102,7 +103,7 @@ mod test {
                     content: Content {
                         parts: vec![
                             Text {
-                                text: "First part. ".to_string(),
+                                text: "First part.".to_string(),
                             },
                             Text {
                                 text: "Second part.".to_string(),
@@ -117,9 +118,7 @@ mod test {
                             text: "Another candidate.".to_string(),
                         }],
                     },
-                    finish_reason: String::new(),
-                    index: Some(0),
-                    avg_log_probs: None,
+                    ..Default::default()
                 },
             ],
             ..Default::default()
@@ -127,7 +126,7 @@ mod test {
 
         assert_eq!(
             test_response.extract_text(),
-            "First part. Second part.Another candidate."
+            "First part. Second part. Another candidate."
         );
     }
 
