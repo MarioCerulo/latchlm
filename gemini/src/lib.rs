@@ -187,30 +187,33 @@ impl AiProvider for Gemini {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use proptest::prelude::*;
 
-    #[test]
-    fn test_gemini_model_try_from_valid() {
-        assert_eq!(
-            GeminiModel::try_from("gemini-2.0-flash").unwrap(),
-            GeminiModel::Flash20
-        );
-        assert_eq!(
-            GeminiModel::try_from("gemini-2.5-pro").unwrap(),
-            GeminiModel::Pro25
-        );
-        assert_eq!(
-            GeminiModel::try_from("gemini-2.0-flash-lite").unwrap(),
-            GeminiModel::Flash20Lite
-        );
-        assert_eq!(
-            GeminiModel::try_from("gemini-2.0-flash-thinking-exp-01-21").unwrap(),
-            GeminiModel::FlashThinking
-        );
-    }
+    proptest! {
+        #[test]
+        fn test_gemini_model_try_from_valid(model in prop_oneof![
+            Just(GeminiModel::Flash20),
+            Just(GeminiModel::Flash20Lite),
+            Just(GeminiModel::Flash25),
+            Just(GeminiModel::Pro25),
+            Just(GeminiModel::FlashThinking),
+        ]) {
+            let model_str = model.as_ref();
+            let parsed_model = GeminiModel::try_from(model_str).unwrap();
+            prop_assert_eq!(model, parsed_model);
+        }
 
-    #[test]
-    fn test_gemini_model_try_from_invalid() {
-        let err = GeminiModel::try_from("nonexistent-model").unwrap_err();
-        assert_eq!(err.to_string(), "Invalid model name: nonexistent-model");
+        #[test]
+        fn test_gemini_model_try_from_invalid(model_str in "\\PC*") {
+            let valid_ids: Vec<_> = GeminiModel::variants()
+                .iter()
+                .map(|v| v.clone().id)
+                .collect();
+
+            prop_assume!(!valid_ids.contains(&model_str));
+
+            let err = GeminiModel::try_from(model_str.as_str()).unwrap_err();
+            prop_assert_eq!(err.to_string(), format!("Invalid model name: {}", model_str));
+        }
     }
 }

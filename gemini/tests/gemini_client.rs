@@ -2,7 +2,7 @@
 // If a copy of the MPL was not distributed with this file, You can obtain one at
 // https://mozilla.org/MPL/2.0/.
 
-use latchlm_core::{AiProvider, AiRequest, Error};
+use latchlm_core::{AiModel, AiProvider, AiRequest, Error};
 use latchlm_gemini::{Gemini, GeminiModel};
 use secrecy::{ExposeSecret, SecretString};
 use wiremock::{
@@ -73,7 +73,7 @@ async fn test_gemini_request_response() {
 }
 
 #[tokio::test]
-async fn test_gemini_error_handling() {
+async fn test_gemini_error_unhautenticated() {
     // Setup mock server
     let mock_server = MockServer::start().await;
     let mock_base_url = mock_server.uri();
@@ -118,5 +118,40 @@ async fn test_gemini_error_handling() {
             assert!(message.contains("UNAUTHENTICATED"));
         }
         _ => panic!("Expected ApiError variant"),
+    }
+}
+
+#[tokio::test]
+async fn test_gemini_error_invalid_model() {
+    struct InvalidModel;
+
+    impl AsRef<str> for InvalidModel {
+        fn as_ref(&self) -> &str {
+            "Invalid Model"
+        }
+    }
+
+    impl AiModel for InvalidModel {}
+
+    let gemini = Gemini::new(
+        reqwest::Client::new(),
+        "test-url",
+        SecretString::from("api-key"),
+    );
+
+    let request = AiRequest {
+        text: "Test Request".to_owned(),
+    };
+
+    let err = gemini
+        .send_request(&InvalidModel, request)
+        .await
+        .expect_err("Expected an error but got a successful response");
+
+    match err {
+        Error::InvalidModelError(invalid_model) => {
+            assert_eq!(invalid_model, InvalidModel.as_ref())
+        }
+        _ => panic!("Expected InvalidModelError"),
     }
 }
