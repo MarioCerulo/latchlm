@@ -20,6 +20,9 @@ pub enum Error {
 
     #[error("Invalid model name: {0}")]
     InvalidModelError(String),
+
+    #[error("Provider settings error: {provider} : {error}")]
+    ProviderError { provider: String, error: String },
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
