@@ -14,7 +14,7 @@ use wiremock::{
 async fn test_gemini_request_response() {
     // Setup mock server
     let mock_server = MockServer::start().await;
-    let mock_base_url = mock_server.uri();
+    let mock_base_url = reqwest::Url::parse(&mock_server.uri()).expect("Failed to parse URL");
 
     let model = GeminiModel::Flash25;
 
@@ -55,7 +55,8 @@ async fn test_gemini_request_response() {
         .await;
 
     // Create client with mock server URL
-    let test_client = Gemini::new(reqwest::Client::new(), &mock_base_url, test_api_key);
+    let test_client =
+        Gemini::new_with_base_url(reqwest::Client::new(), mock_base_url, test_api_key);
 
     // Make the request
     let response = test_client
@@ -76,7 +77,7 @@ async fn test_gemini_request_response() {
 async fn test_gemini_error_unhautenticated() {
     // Setup mock server
     let mock_server = MockServer::start().await;
-    let mock_base_url = mock_server.uri();
+    let mock_base_url = reqwest::Url::parse(&mock_server.uri()).expect("Failed to parse URL");
 
     let model = GeminiModel::Flash25;
     let error_response_body = serde_json::json!({
@@ -95,9 +96,9 @@ async fn test_gemini_error_unhautenticated() {
         .await;
 
     // Create client with mock server URL and invalid API key
-    let test_client = Gemini::new(
+    let test_client = Gemini::new_with_base_url(
         reqwest::Client::new(),
-        &mock_base_url,
+        mock_base_url,
         SecretString::from("invalid"),
     );
     // Make the request that should fail
@@ -133,9 +134,9 @@ async fn test_gemini_error_invalid_model() {
 
     impl AiModel for InvalidModel {}
 
-    let gemini = Gemini::new(
+    let gemini = Gemini::new_with_base_url(
         reqwest::Client::new(),
-        "test-url",
+        reqwest::Url::parse("http://test.test").expect("Failed to parse URL"),
         SecretString::from("api-key"),
     );
 

@@ -10,6 +10,13 @@ keywords = { workspace = true }
 categories = { workspace = true }
 publish = false
 
+[features]
+# Enable internal testing utilities.
+# WARNING:This feature is not subject to semantic versioning and 
+# it's intended for testing and mocking purposes only and should not
+# be used in ptoduction code. Its signature is not guaranteed to be stable.
+test-utils = []
+
 [dependencies]
 serde = { workspace = true }
 serde_json = { workspace = true }
@@ -17,9 +24,10 @@ strum = { workspace = true }
 strum_macros = { workspace = true }
 reqwest = { workspace = true }
 secrecy = { workspace = true }
-latchlm-core = "0.2.0"
+latchlm-core = { path = "../core" }
 
 [dev-dependencies]
 wiremock = { workspace = true }
 tokio = { workspace = true }
 proptest = { workspace = true }
+latchlm-gemini = { path = ".", features = ["test-utils"] }

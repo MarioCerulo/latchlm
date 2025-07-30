@@ -7,7 +7,7 @@
 
 use std::{future::ready, sync::Arc};
 
-use latchlm_core::{AiModel, AiProvider, AiRequest, AiResponse, BoxFuture, Error, ModelId, Result};
+use latchlm_core::{AiModel, AiProvider, AiRequest, AiResponse, BoxFuture, Error, ModelId};
 
 use secrecy::{ExposeSecret, SecretString};
 use serde::Deserialize;
@@ -39,7 +39,7 @@ impl std::fmt::Display for GeminiModel {
 
 impl TryFrom<&str> for GeminiModel {
     type Error = Error;
-    fn try_from(value: &str) -> Result<Self> {
+    fn try_from(value: &str) -> latchlm_core::Result<Self> {
         match value {
             "gemini-2.0-flash" => Ok(Self::Flash20),
             "gemini-2.0-flash-lite" => Ok(Self::Flash20Lite),
@@ -99,28 +99,130 @@ impl GeminiModel {
     }
 }
 
+#[derive(Debug)]
+pub enum GeminiError {
+    /// Returned when no API key is provided
+    MissingApiKeyError,
+    /// Returned when no HTTP client is provided
+    MissingClientError,
+}
+
+impl From<GeminiError> for Error {
+    fn from(value: GeminiError) -> Self {
+        match value {
+            GeminiError::MissingApiKeyError => Error::ProviderError {
+                provider: "Gemini".into(),
+                error: "Missing API key".into(),
+            },
+            GeminiError::MissingClientError => Error::ProviderError {
+                provider: "Gemini".into(),
+                error: "Missing reqwest::Client".into(),
+            },
+        }
+    }
+}
+
+impl std::error::Error for GeminiError {}
+
+impl std::fmt::Display for GeminiError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            GeminiError::MissingApiKeyError => write!(f, "API key is required"),
+            GeminiError::MissingClientError => write!(f, "HTTP client is required"),
+        }
+    }
+}
+
+/// Builder for constructing a [`Gemini`] client instance
+#[derive(Default)]
+pub struct GeminiBuilder {
+    client: Option<reqwest::Client>,
+    api_key: Option<SecretString>,
+}
+
+impl GeminiBuilder {
+    /// Create a new builder instance with default settings
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Sets a custom HTTP client
+    pub fn client(mut self, client: reqwest::Client) -> Self {
+        self.client = Some(client);
+        self
+    }
+
+    /// Sets the API key
+    pub fn api_key(mut self, api_key: SecretString) -> Self {
+        self.api_key = Some(api_key);
+        self
+    }
+
+    /// Loads the API key from the `GEMINI_API_KEY` environment variable
+    pub fn api_key_from_env(mut self) -> Result<Self, std::env::VarError> {
+        let api_key = std::env::var("GEMINI_API_KEY")?;
+
+        self.api_key = Some(SecretString::from(api_key));
+        Ok(self)
+    }
+
+    /// Constructs a [`Gemini`] instance
+    ///
+    /// # Errors
+    /// Returns an error if the client or API key are missing
+    ///
+    /// # Panics
+    /// Panics if the base URL is not set, which should never happen since it has a default.
+    pub fn build(self) -> latchlm_core::Result<Gemini> {
+        let client = self.client.ok_or(GeminiError::MissingClientError)?;
+        let api_key = self.api_key.ok_or(GeminiError::MissingApiKeyError)?;
+
+        Ok(Gemini::new(client, api_key))
+    }
+}
+
 /// A client for interacting with the Gemini API.
 pub struct Gemini {
     client: reqwest::Client,
-    base_url: String,
+    base_url: reqwest::Url,
     api_key: Arc<SecretString>,
 }
 
+const GEMINI_API_URL: &str = "https://generativelanguage.googleapis.com";
 // The HTTP header used for authentication with the gemini api
 const X_GOOG_API_KEY: &str = "x-goog-api-key";
 
 impl Gemini {
-    /// Create a new `Gemini` client instance.
+    /// Creates a new `Gemini` client instance.
     ///
     /// # Arguments
     ///
     /// * `client` - A reference to a preconfigured [`reqwest::Client`].
-    /// * `base_url` - The base url for the gemini API.
     /// * `api_key` - The API key wrapped in `SecretString` for secure handling
-    pub fn new(client: reqwest::Client, base_url: &str, api_key: SecretString) -> Self {
+    pub fn new(client: reqwest::Client, api_key: SecretString) -> Self {
         Self {
             client,
-            base_url: base_url.to_owned(),
+            base_url: reqwest::Url::parse(GEMINI_API_URL).expect("Failed to parse base url"),
+            api_key: Arc::new(api_key),
+        }
+    }
+
+    /// Creates a new `Gemini` client instance with a custom base URL.
+    ///
+    /// This constructor is intended exclusively for testing and mocking scenarios
+    /// and should **never** be used in production code.
+    ///
+    /// # Feature
+    /// Requires the `test-utils` feature flag.
+    #[cfg(feature = "test-utils")]
+    pub fn new_with_base_url(
+        client: reqwest::Client,
+        base_url: reqwest::Url,
+        api_key: SecretString,
+    ) -> Self {
+        Self {
+            client,
+            base_url,
             api_key: Arc::new(api_key),
         }
     }
@@ -133,8 +235,19 @@ impl Gemini {
     /// or if the response cannot be parsed.
     ///
     /// [`Error`]: latchlm_core::Error
-    pub async fn request(&self, model: GeminiModel, request: AiRequest) -> Result<GeminiResponse> {
-        let url = format!("{}/{}:generateContent", self.base_url, model.as_ref());
+    pub async fn request(
+        &self,
+        model: GeminiModel,
+        request: AiRequest,
+    ) -> latchlm_core::Result<GeminiResponse> {
+        let url = self
+            .base_url
+            .join(&format!(
+                "/v1beta/models/{}:generateContent",
+                model.as_ref()
+            ))
+            .expect("Failed to parse the URL");
+
         let mut headers = reqwest::header::HeaderMap::new();
         headers.insert(
             X_GOOG_API_KEY,
@@ -148,7 +261,7 @@ impl Gemini {
 
         let response = self
             .client
-            .post(&url)
+            .post(url)
             .headers(headers)
             .json(&payload)
             .send()
@@ -174,7 +287,7 @@ impl AiProvider for Gemini {
         &self,
         model: &dyn AiModel,
         request: AiRequest,
-    ) -> BoxFuture<'_, Result<AiResponse>> {
+    ) -> BoxFuture<'_, latchlm_core::Result<AiResponse>> {
         let Ok(model) = GeminiModel::try_from(model.as_ref()) else {
             let model_name = model.as_ref().to_owned();
             return Box::pin(ready(Err(Error::InvalidModelError(model_name))));
