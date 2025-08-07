@@ -1,0 +1,5 @@
+error: missing #[model] attribute with id
+ --> tests/compile_fail/missing_attributes.rs:8:5
+  |
+8 |     Variant,
+  |     ^^^^^^^

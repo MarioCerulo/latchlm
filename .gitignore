@@ -28,5 +28,8 @@
 !gemini/
 !gemini/**
 
+!macros/
+!macros/**
+
 !xtask/
 !xtask/**

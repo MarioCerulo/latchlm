@@ -1,0 +1,5 @@
+error: AiModel can only be derived for enums
+ --> tests/compile_fail/struct.rs:7:1
+  |
+7 | struct Model;
+  | ^^^^^^^^^^^^^

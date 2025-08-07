@@ -1,0 +1,18 @@
+error: missing #[model] attribute with name
+ --> tests/compile_fail/missing_name.rs:9:5
+  |
+9 |     Variant,
+  |     ^^^^^^^
+
+error[E0599]: no method named `as_ref` found for enum `Model` in the current scope
+  --> tests/compile_fail/missing_name.rs:13:20
+   |
+7  | enum Model {
+   | ---------- method `as_ref` not found for this enum
+...
+13 |     Model::Variant.as_ref();
+   |                    ^^^^^^ method not found in `Model`
+   |
+   = help: items from traits can only be used if the trait is implemented and in scope
+   = note: the following trait defines an item `as_ref`, perhaps you need to implement it:
+           candidate #1: `AsRef`

@@ -1,0 +1,23 @@
+error: Repeated Id: model id must be unique
+  --> tests/compile_fail/duplicate_id.rs:7:1
+   |
+7  | / enum Model {
+8  | |     #[model(id = "variant-1", name = "V1")]
+9  | |     Variant1,
+10 | |     #[model(id = "variant-1", name = "V2")]
+11 | |     Variant2,
+12 | | }
+   | |_^
+
+error[E0599]: no method named `as_ref` found for enum `Model` in the current scope
+  --> tests/compile_fail/duplicate_id.rs:15:21
+   |
+7  | enum Model {
+   | ---------- method `as_ref` not found for this enum
+...
+15 |     Model::Variant1.as_ref();
+   |                     ^^^^^^ method not found in `Model`
+   |
+   = help: items from traits can only be used if the trait is implemented and in scope
+   = note: the following trait defines an item `as_ref`, perhaps you need to implement it:
+           candidate #1: `AsRef`
