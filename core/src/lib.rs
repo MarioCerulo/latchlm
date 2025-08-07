@@ -28,7 +28,7 @@ pub type BoxFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
 ///
 /// # Example
 /// ```
-/// use latchlm_core::AiModel;
+/// use latchlm_core::{AiModel, ModelId};
 ///
 /// pub enum MyModel {
 ///     Variant1,
@@ -44,7 +44,14 @@ pub type BoxFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
 ///     }
 /// }
 ///
-/// impl AiModel for MyModel {}
+/// impl AiModel for MyModel {
+///     fn model_id(&self) -> ModelId {
+///         match self {
+///             MyModel::Variant1 => ModelId { id: "mymodel-variant-1", name: "My Model Variant 1"},
+///             MyModel::Variant2 => ModelId { id: "mymodel-variant-2", name: "My Model Variant 2"},
+///         }
+///     }
+/// }
 /// ```
 pub trait AiModel: AsRef<str> + Send + Sync {
     fn model_id(&self) -> ModelId;
