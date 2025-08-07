@@ -21,7 +21,7 @@ use std::{future::Future, pin::Pin, sync::Arc};
 /// which allows to be returned from async traits.
 pub type BoxFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
 
-/// A marker trait representing a specific AI model for a provider.
+/// A trait representing a specific AI model for a provider.
 ///
 /// Implementors of this trait represent specific model variants supported by an LLM provider.
 /// Each model must be convertible to a string identifier that can be used in API requests.
@@ -46,15 +46,17 @@ pub type BoxFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
 ///
 /// impl AiModel for MyModel {}
 /// ```
-pub trait AiModel: AsRef<str> + Send + Sync {}
+pub trait AiModel: AsRef<str> + Send + Sync {
+    fn model_id(&self) -> ModelId;
+}
 
 /// A unique identifier for an LLM model.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct ModelId {
     /// The technical identifier used in API requests
-    pub id: String,
+    pub id: &'static str,
     /// A human-readable name
-    pub name: String,
+    pub name: &'static str,
 }
 
 impl std::fmt::Display for ModelId {
