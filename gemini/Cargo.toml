@@ -12,7 +12,7 @@ publish = false
 
 [features]
 # Enable internal testing utilities.
-# WARNING:This feature is not subject to semantic versioning and 
+# WARNING:This feature is not subject to semantic versioning and
 # it's intended for testing and mocking purposes only and should not
 # be used in ptoduction code. Its signature is not guaranteed to be stable.
 test-utils = []
@@ -20,11 +20,10 @@ test-utils = []
 [dependencies]
 serde = { workspace = true }
 serde_json = { workspace = true }
-strum = { workspace = true }
-strum_macros = { workspace = true }
 reqwest = { workspace = true }
 secrecy = { workspace = true }
 latchlm-core = { path = "../core" }
+latchlm-macros = { path = "../macros" }
 
 [dev-dependencies]
 wiremock = { workspace = true }

@@ -87,7 +87,7 @@ async fn test_gemini_error_unhautenticated() {
         }
     });
 
-    // Setup the mock to return 400 error
+    // Setup the mock to return 401 error
     let _mock_guard = Mock::given(method("POST"))
         .and(path_regex(r".+:generateContent$"))
         .respond_with(ResponseTemplate::new(401).set_body_json(error_response_body))
@@ -132,7 +132,14 @@ async fn test_gemini_error_invalid_model() {
         }
     }
 
-    impl AiModel for InvalidModel {}
+    impl AiModel for InvalidModel {
+        fn model_id(&self) -> latchlm_core::ModelId {
+            latchlm_core::ModelId {
+                id: "invalid_model",
+                name: "Invalid Model",
+            }
+        }
+    }
 
     let gemini = Gemini::new_with_base_url(
         reqwest::Client::new(),

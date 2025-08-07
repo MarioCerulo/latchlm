@@ -7,12 +7,10 @@
 
 use std::{future::ready, sync::Arc};
 
-use latchlm_core::{AiModel, AiProvider, AiRequest, AiResponse, BoxFuture, Error, ModelId};
+use latchlm_core::{AiModel, AiProvider, AiRequest, AiResponse, BoxFuture, Error};
+use latchlm_macros::AiModel;
 
 use secrecy::{ExposeSecret, SecretString};
-use serde::Deserialize;
-use strum::IntoEnumIterator;
-use strum_macros::EnumIter;
 
 mod response;
 pub use response::*;
@@ -20,14 +18,21 @@ pub use response::*;
 /// Variants representing supported Gemini models.
 ///
 /// These variants map to the actual model identifiers used by the Gemini API.
-#[derive(Debug, EnumIter, Deserialize, Clone, PartialEq, Eq, Hash)]
-#[serde(try_from = "&str")]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, AiModel)]
 #[non_exhaustive]
 pub enum GeminiModel {
+    #[model(id = "gemini-2.0-flash", name = "Gemini 2.0 Flash")]
     Flash20,
+    #[model(id = "gemini-2.0-flash-lite", name = "Gemini 2.0 Flash Lite")]
     Flash20Lite,
+    #[model(id = "gemini-2.5-flash", name = "Gemini 2.5 Flash")]
     Flash25,
+    #[model(id = "gemini-2.5-pro", name = "Gemini 2.5 Pro")]
     Pro25,
+    #[model(
+        id = "gemini-2.0-flash-thinking-exp-01-21",
+        name = "Gemini 2.0 Flash Thinking"
+    )]
     FlashThinking,
 }
 
@@ -37,69 +42,8 @@ impl std::fmt::Display for GeminiModel {
     }
 }
 
-impl TryFrom<&str> for GeminiModel {
-    type Error = Error;
-    fn try_from(value: &str) -> latchlm_core::Result<Self> {
-        match value {
-            "gemini-2.0-flash" => Ok(Self::Flash20),
-            "gemini-2.0-flash-lite" => Ok(Self::Flash20Lite),
-            "gemini-2.0-flash-thinking-exp-01-21" => Ok(Self::FlashThinking),
-            "gemini-2.5-flash" => Ok(Self::Flash25),
-            "gemini-2.5-pro" => Ok(Self::Pro25),
-            invalid_model => Err(Error::InvalidModelError(invalid_model.to_owned())),
-        }
-    }
-}
-
-impl AsRef<str> for GeminiModel {
-    fn as_ref(&self) -> &str {
-        match self {
-            GeminiModel::Flash20 => "gemini-2.0-flash",
-            GeminiModel::Flash20Lite => "gemini-2.0-flash-lite",
-            GeminiModel::Pro25 => "gemini-2.5-pro",
-            GeminiModel::FlashThinking => "gemini-2.0-flash-thinking-exp-01-21",
-            GeminiModel::Flash25 => "gemini-2.5-flash",
-        }
-    }
-}
-impl AiModel for GeminiModel {}
-
-impl GeminiModel {
-    /// Get the [`ModelId`] of the specified model
-    ///
-    /// [`ModelId`]: latchlm_core::ModelId
-    pub fn model_id(&self) -> ModelId {
-        match self {
-            Self::Flash20 => ModelId {
-                id: self.as_ref().to_string(),
-                name: "Gemini 2.0 Flash".to_string(),
-            },
-            Self::Pro25 => ModelId {
-                id: self.as_ref().to_string(),
-                name: "Gemini 2.5 Pro".to_string(),
-            },
-            Self::Flash20Lite => ModelId {
-                id: self.as_ref().to_string(),
-                name: "Gemini 2.0 Flash Lite".to_string(),
-            },
-            Self::FlashThinking => ModelId {
-                id: self.as_ref().to_string(),
-                name: "Gemini 2.0 Flash Thinking".to_string(),
-            },
-            Self::Flash25 => ModelId {
-                id: self.as_ref().to_string(),
-                name: "Gemini 2.5 Flash".to_string(),
-            },
-        }
-    }
-
-    /// Returns all supported Gemini model variants as a vector of [`ModelId`].
-    pub fn variants() -> Vec<ModelId> {
-        Self::iter().map(|variant| variant.model_id()).collect()
-    }
-}
-
-#[derive(Debug)]
+/// Errors that can occur when building a [`Gemini`] client.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum GeminiError {
     /// Returned when no API key is provided
     MissingApiKeyError,
@@ -188,11 +132,12 @@ pub struct Gemini {
     api_key: Arc<SecretString>,
 }
 
-const GEMINI_API_URL: &str = "https://generativelanguage.googleapis.com";
-// The HTTP header used for authentication with the gemini api
-const X_GOOG_API_KEY: &str = "x-goog-api-key";
-
 impl Gemini {
+    const BASE_URL: &str = "https://generativelanguage.googleapis.com";
+
+    // The HTTP header used for authentication with the gemini api
+    const X_GOOG_API_KEY: &str = "x-goog-api-key";
+
     /// Creates a new `Gemini` client instance.
     ///
     /// # Arguments
@@ -202,7 +147,7 @@ impl Gemini {
     pub fn new(client: reqwest::Client, api_key: SecretString) -> Self {
         Self {
             client,
-            base_url: reqwest::Url::parse(GEMINI_API_URL).expect("Failed to parse base url"),
+            base_url: reqwest::Url::parse(Self::BASE_URL).expect("Failed to parse base url"),
             api_key: Arc::new(api_key),
         }
     }
@@ -211,6 +156,12 @@ impl Gemini {
     ///
     /// This constructor is intended exclusively for testing and mocking scenarios
     /// and should **never** be used in production code.
+    ///
+    /// # Arguments
+    ///
+    /// * `client` - A reference to a preconfigured [`reqwest::Client`].
+    /// * `base_url` - The base URL for the Gemini API.
+    /// * `api_key` - The API key wrapped in `SecretString` for secure handling
     ///
     /// # Feature
     /// Requires the `test-utils` feature flag.
@@ -227,13 +178,66 @@ impl Gemini {
         }
     }
 
-    /// Sends a request to the Gemini API.
+    /// Creates a new [`GeminiBuilder`] instance.
+    pub fn builder() -> GeminiBuilder {
+        GeminiBuilder::new()
+    }
+
+    /// Sends a request to the Gemini API to generate content.
+    ///
+    /// This method constructs a request to Google's Gemini API, handles authentication
+    /// and returns the parsed response containing the generated content.
+    ///
+    /// # Arguments
+    ///
+    /// * `model` - The model to use for the request.
+    /// * `request` - The request to send.
+    ///
+    /// # Returns
+    ///
+    /// Returns a [`GeminiResponse`] if the request is successful.
     ///
     /// # Errors
     ///
-    /// Returns an [`Error`] if the request fails, the response status is not successful,
-    /// or if the response cannot be parsed.
+    /// Returns an [`Error`] if:
+    /// - The HTTP request fails (network issues, timeout, etc.)
+    /// - The API returns a non-success status code
+    /// - The response body cannot be parsed as valid JSON
+    /// - The API key is invalid or missing required permissions
     ///
+    /// # Example
+    ///
+    /// ```toml
+    /// [dependencies]
+    /// latchlm = { version = "*", features = ["gemini"] }
+    /// secrecy = "*"
+    /// reqwest = "*"
+    /// tokio = { version = "*", features = ["full"] }
+    /// ```
+    ///
+    /// ```no_run
+    /// use secrecy::SecretString;
+    /// use latchlm_core::AiRequest;
+    /// use latchlm_gemini::{Gemini, GeminiModel};
+    ///
+    /// #[tokio::main]
+    /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    ///     let gemini = Gemini::builder()
+    ///         .client(reqwest::Client::new())
+    ///         .api_key(SecretString::new("your-api-key".into()))
+    ///         .build()?;
+    ///
+    ///     let response = gemini.request(
+    ///         GeminiModel::Flash25,
+    ///         AiRequest {
+    ///             text: "Hello".into(),
+    ///         }
+    ///     ).await?;
+    ///
+    ///     println!("{}", response.extract_text());
+    ///     Ok(())
+    /// }
+    /// ```
     /// [`Error`]: latchlm_core::Error
     pub async fn request(
         &self,
@@ -250,7 +254,7 @@ impl Gemini {
 
         let mut headers = reqwest::header::HeaderMap::new();
         headers.insert(
-            X_GOOG_API_KEY,
+            Self::X_GOOG_API_KEY,
             self.api_key
                 .expose_secret()
                 .parse()
@@ -288,6 +292,7 @@ impl AiProvider for Gemini {
         model: &dyn AiModel,
         request: AiRequest,
     ) -> BoxFuture<'_, latchlm_core::Result<AiResponse>> {
+        use std::convert::TryFrom;
         let Ok(model) = GeminiModel::try_from(model.as_ref()) else {
             let model_name = model.as_ref().to_owned();
             return Box::pin(ready(Err(Error::InvalidModelError(model_name))));
@@ -320,10 +325,10 @@ mod tests {
         fn test_gemini_model_try_from_invalid(model_str in "\\PC*") {
             let valid_ids: Vec<_> = GeminiModel::variants()
                 .iter()
-                .map(|v| v.clone().id)
+                .map(|v| v.id)
                 .collect();
 
-            prop_assume!(!valid_ids.contains(&model_str));
+            prop_assume!(!valid_ids.contains(&model_str.as_ref()));
 
             let err = GeminiModel::try_from(model_str.as_str()).unwrap_err();
             prop_assert_eq!(err.to_string(), format!("Invalid model name: {}", model_str));
