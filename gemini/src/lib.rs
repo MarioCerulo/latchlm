@@ -126,6 +126,7 @@ impl GeminiBuilder {
 }
 
 /// A client for interacting with the Gemini API.
+#[derive(Debug, Clone)]
 pub struct Gemini {
     client: reqwest::Client,
     base_url: reqwest::Url,
