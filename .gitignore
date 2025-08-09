@@ -28,6 +28,9 @@
 !gemini/
 !gemini/**
 
+!openai/
+!openai/**
+
 !macros/
 !macros/**
 
