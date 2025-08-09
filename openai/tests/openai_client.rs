@@ -199,7 +199,7 @@ async fn test_openai_gpt5_nano_response_format() {
             },
         )
         .await
-        .map_err(|e| panic!("Error: {}", e));
+        .map_err(|e| panic!("Error: {e}"));
 
     let expected = "AI, or artificial intelligence, refers to computer systems that can perform tasks that normally require human intelligence. These tasks include understanding language, recognizing images or sounds, solving problems, learning from data, and making decisions.";
 
