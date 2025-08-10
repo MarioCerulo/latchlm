@@ -11,10 +11,8 @@ categories = { workspace = true }
 publish = true
 
 [features]
-default = ["latchlm-core"]
-full = ["default"]
 
 [dependencies]
-latchlm-core = { version = "0.1.0", optional = true }
+latchlm-core = { version = "0.2.0" }
 
 thiserror = { workspace = true }

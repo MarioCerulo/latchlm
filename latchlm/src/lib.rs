@@ -8,5 +8,4 @@
 //! This crate serves as the main entrypoint, re-exporting traits and types for building
 //! applications and libraries that work with various LLM providers.
 
-#[cfg(feature = "default")]
 pub use latchlm_core::*;
