@@ -240,7 +240,8 @@ impl Openai {
     ///
     /// ```toml
     /// [dependencies]
-    /// latchlm = { version = "*", features = ["openai"] }
+    /// latchlm_core = "*"
+    /// latchlm_openai = "*"
     /// secrecy = "*"
     /// tokio = { version = "*", features = ["full"] }
     /// ```
@@ -348,6 +349,19 @@ mod tests {
             let model_str = model.as_ref();
             let parsed_model = OpenaiModel::try_from(model_str).unwrap();
             prop_assert_eq!(model, parsed_model);
+        }
+
+        #[test]
+        fn test_openai_model_try_from_invalid(model_str in "\\PC*") {
+            let valid_ids: Vec<_> = OpenaiModel::variants()
+                .iter()
+                .map(|v| v.id.clone())
+                .collect();
+
+            prop_assume!(!valid_ids.contains(&model_str.clone().into()));
+
+            let err = OpenaiModel::try_from(model_str.as_str()).unwrap_err();
+            prop_assert_eq!(err.to_string(), format!("Invalid model name: {}", model_str));
         }
     }
 }
