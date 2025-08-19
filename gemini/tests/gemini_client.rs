@@ -133,10 +133,10 @@ async fn test_gemini_error_invalid_model() {
     }
 
     impl AiModel for InvalidModel {
-        fn model_id(&self) -> latchlm_core::ModelId {
+        fn model_id(&self) -> latchlm_core::ModelId<'_> {
             latchlm_core::ModelId {
-                id: "invalid_model",
-                name: "Invalid Model",
+                id: "invalid_model".into(),
+                name: "Invalid Model".into(),
             }
         }
     }

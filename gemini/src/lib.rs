@@ -326,10 +326,10 @@ mod tests {
         fn test_gemini_model_try_from_invalid(model_str in "\\PC*") {
             let valid_ids: Vec<_> = GeminiModel::variants()
                 .iter()
-                .map(|v| v.id)
+                .map(|v| v.id.clone())
                 .collect();
 
-            prop_assume!(!valid_ids.contains(&model_str.as_ref()));
+            prop_assume!(!valid_ids.contains(&model_str.clone().into()));
 
             let err = GeminiModel::try_from(model_str.as_str()).unwrap_err();
             prop_assert_eq!(err.to_string(), format!("Invalid model name: {}", model_str));
