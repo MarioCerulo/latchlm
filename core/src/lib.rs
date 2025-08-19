@@ -13,7 +13,7 @@ pub mod error;
 pub use error::*;
 
 use serde::{Deserialize, Serialize};
-use std::{future::Future, pin::Pin, sync::Arc};
+use std::{borrow::Cow, future::Future, pin::Pin, sync::Arc};
 
 /// A `Future` type used by the `AiProvider` trait.
 ///
@@ -47,26 +47,26 @@ pub type BoxFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
 /// impl AiModel for MyModel {
 ///     fn model_id(&self) -> ModelId {
 ///         match self {
-///             MyModel::Variant1 => ModelId { id: "mymodel-variant-1", name: "My Model Variant 1"},
-///             MyModel::Variant2 => ModelId { id: "mymodel-variant-2", name: "My Model Variant 2"},
+///             MyModel::Variant1 => ModelId { id: "mymodel-variant-1".into(), name: "My Model Variant 1".into()},
+///             MyModel::Variant2 => ModelId { id: "mymodel-variant-2".into(), name: "My Model Variant 2".into()},
 ///         }
 ///     }
 /// }
 /// ```
 pub trait AiModel: AsRef<str> + Send + Sync {
-    fn model_id(&self) -> ModelId;
+    fn model_id(&self) -> ModelId<'_>;
 }
 
 /// A unique identifier for an LLM model.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
-pub struct ModelId {
+pub struct ModelId<'a> {
     /// The technical identifier used in API requests
-    pub id: &'static str,
+    pub id: Cow<'a, str>,
     /// A human-readable name
-    pub name: &'static str,
+    pub name: Cow<'a, str>,
 }
 
-impl std::fmt::Display for ModelId {
+impl std::fmt::Display for ModelId<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.name)
     }
