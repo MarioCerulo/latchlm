@@ -120,8 +120,8 @@ fn ai_model_derive_impl(input: DeriveInput) -> syn::Result<TokenStream> {
         .map(|(variant_name, id, model_name)| {
             quote! {
                 #name::#variant_name => ::latchlm_core::ModelId {
-                    id: #id,
-                    name: #model_name,
+                    id: ::std::borrow::Cow::Borrowed(#id),
+                    name: ::std::borrow::Cow::Borrowed(#model_name),
                 }
             }
         })
@@ -132,8 +132,8 @@ fn ai_model_derive_impl(input: DeriveInput) -> syn::Result<TokenStream> {
         .map(|(_, id, model_name)| {
             quote! {
                 ::latchlm_core::ModelId {
-                    id: #id,
-                    name: #model_name
+                    id: ::std::borrow::Cow::Borrowed(#id),
+                    name: ::std::borrow::Cow::Borrowed(#model_name),
                 }
             }
         })
@@ -210,8 +210,8 @@ fn ai_model_derive_impl(input: DeriveInput) -> syn::Result<TokenStream> {
         }
 
         impl #name {
-            pub fn variants() -> &'static [::latchlm_core::ModelId] {
-                const VARS: [::latchlm_core::ModelId; #array_len] = [
+            pub fn variants() -> &'static [::latchlm_core::ModelId::<'static>] {
+                const VARS: [::latchlm_core::ModelId::<'static>; #array_len] = [
                     #(#array_arms),*
                 ];
 
