@@ -7,7 +7,7 @@
 
 use std::{future::ready, sync::Arc};
 
-use latchlm_core::{AiModel, AiProvider, AiRequest, Error};
+use latchlm_core::{AiModel, AiProvider, AiRequest, AiResponse, BoxFuture, Error, Result};
 use latchlm_macros::AiModel;
 use reqwest::header::{AUTHORIZATION, CONTENT_TYPE, HeaderMap, HeaderValue};
 use secrecy::{ExposeSecret, SecretString};
@@ -133,7 +133,7 @@ impl OpenaiBuilder {
     }
 
     /// Loads the API key from the `OPENAI_API_KEY` environment variable.
-    pub fn api_key_from_env(mut self) -> Result<Self, std::env::VarError> {
+    pub fn api_key_from_env(mut self) -> std::result::Result<Self, std::env::VarError> {
         let api_key = std::env::var("OPENAI_API_KEY")?;
 
         self.api_key = Some(SecretString::from(api_key));
@@ -145,7 +145,7 @@ impl OpenaiBuilder {
     /// # Returns
     ///
     /// A new `Openai` client.
-    pub fn build(self) -> latchlm_core::Result<Openai> {
+    pub fn build(self) -> Result<Openai> {
         let client = self.client.ok_or(OpenaiError::MissingClientError)?;
         let api_key = self.api_key.ok_or(OpenaiError::MissingApiKeyError)?;
         Ok(Openai::new(client, api_key))
@@ -271,11 +271,7 @@ impl Openai {
     /// ```
     ///
     /// [`Error`]: latchlm_core::Error
-    pub async fn request(
-        &self,
-        model: OpenaiModel,
-        request: AiRequest,
-    ) -> latchlm_core::Result<OpenaiResponse> {
+    pub async fn request(&self, model: OpenaiModel, request: AiRequest) -> Result<OpenaiResponse> {
         let mut header_map = HeaderMap::new();
         header_map.insert(CONTENT_TYPE, HeaderValue::from_static("application/json"));
         header_map.insert(
@@ -312,9 +308,9 @@ impl Openai {
 impl AiProvider for Openai {
     fn send_request(
         &self,
-        model: &dyn latchlm_core::AiModel,
+        model: &dyn AiModel,
         request: AiRequest,
-    ) -> latchlm_core::BoxFuture<'_, latchlm_core::Result<latchlm_core::AiResponse>> {
+    ) -> BoxFuture<'_, Result<AiResponse>> {
         let Ok(model) = model.as_ref().parse() else {
             let model_name = model.as_ref();
             return Box::pin(ready(Err(Error::InvalidModelError(model_name.into()))));
@@ -347,7 +343,7 @@ mod tests {
             Just(OpenaiModel::Gpt4oMini),
         ]) {
             let model_str = model.as_ref();
-            let parsed_model = OpenaiModel::try_from(model_str).unwrap();
+            let parsed_model = model_str.parse().unwrap();
             prop_assert_eq!(model, parsed_model);
         }
 

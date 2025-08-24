@@ -1,4 +1,4 @@
-use latchlm_core::{AiModel, AiProvider, AiRequest};
+use latchlm_core::{AiModel, AiProvider, AiRequest, Error, ModelId};
 use latchlm_openai::{Openai, OpenaiModel};
 use secrecy::{ExposeSecret, SecretString};
 use wiremock::{
@@ -10,7 +10,7 @@ use wiremock::{
 async fn test_openai_request_response() {
     // Setup mock server
     let mock_server = MockServer::start().await;
-    let mock_base_url = reqwest::Url::parse(&mock_server.uri()).expect("Failed to parse URL");
+    let mock_base_url = mock_server.uri();
 
     let model = OpenaiModel::Gpt41Nano;
 
@@ -83,8 +83,11 @@ async fn test_openai_request_response() {
         .await;
 
     // Create client with mock server URL
-    let test_client =
-        Openai::new_with_base_url(reqwest::Client::new(), mock_base_url, test_api_key);
+    let test_client = Openai::new_with_base_url(
+        reqwest::Client::new(),
+        mock_base_url.parse().expect("Failed to parse URL"),
+        test_api_key,
+    );
 
     // Make the request
     let response = test_client
@@ -106,7 +109,7 @@ async fn test_openai_request_response() {
 #[tokio::test]
 async fn test_openai_gpt5_nano_response_format() {
     let mock_server = MockServer::start().await;
-    let mock_base_url = reqwest::Url::parse(&mock_server.uri()).expect("Failed to parse URL");
+    let mock_base_url = mock_server.uri();
 
     let model = OpenaiModel::Gpt5Nano;
 
@@ -189,7 +192,11 @@ async fn test_openai_gpt5_nano_response_format() {
         .mount_as_scoped(&mock_server)
         .await;
 
-    let client = Openai::new_with_base_url(reqwest::Client::new(), mock_base_url, test_api_key);
+    let client = Openai::new_with_base_url(
+        reqwest::Client::new(),
+        mock_base_url.parse().expect("Failed to parse URL"),
+        test_api_key,
+    );
 
     let response = client
         .send_request(
@@ -209,8 +216,7 @@ async fn test_openai_gpt5_nano_response_format() {
 #[tokio::test]
 async fn test_openai_error_unhautenticated() {
     let mock_server = MockServer::start().await;
-    let mock_server_url =
-        reqwest::Url::parse(&mock_server.uri()).expect("Failed to parse mock URL");
+    let mock_server_url = mock_server.uri();
 
     let model = OpenaiModel::Gpt4o;
     let api_key = SecretString::from("incorrect_api_key");
@@ -224,7 +230,11 @@ async fn test_openai_error_unhautenticated() {
       }
     });
 
-    let openai = Openai::new_with_base_url(reqwest::Client::new(), mock_server_url, api_key);
+    let openai = Openai::new_with_base_url(
+        reqwest::Client::new(),
+        mock_server_url.parse().expect("Failed to parse URL"),
+        api_key,
+    );
 
     let _mock_guard = Mock::given(method("POST"))
         .respond_with(ResponseTemplate::new(401).set_body_json(&error_response_body))
@@ -255,8 +265,8 @@ async fn test_openai_error_invalid_model() {
     }
 
     impl AiModel for InvalidModel {
-        fn model_id(&self) -> latchlm_core::ModelId<'_> {
-            latchlm_core::ModelId {
+        fn model_id(&self) -> ModelId<'_> {
+            ModelId {
                 id: self.as_ref().into(),
                 name: self.as_ref().into(),
             }
@@ -265,7 +275,7 @@ async fn test_openai_error_invalid_model() {
 
     let openai = Openai::new_with_base_url(
         reqwest::Client::new(),
-        reqwest::Url::parse("http://test.test").expect("Failed to parse URL"),
+        "http://test.test".parse().expect("Failed to parse URL"),
         SecretString::from("api-key"),
     );
 
@@ -279,7 +289,7 @@ async fn test_openai_error_invalid_model() {
         .expect_err("Expected an error but got a successful response");
 
     match err {
-        latchlm_core::Error::InvalidModelError(invalid_model) => {
+        Error::InvalidModelError(invalid_model) => {
             assert_eq!(invalid_model, InvalidModel.as_ref());
         }
         _ => panic!("Expected InvalidModelError"),

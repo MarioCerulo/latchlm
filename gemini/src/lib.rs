@@ -7,7 +7,7 @@
 
 use std::{future::ready, sync::Arc};
 
-use latchlm_core::{AiModel, AiProvider, AiRequest, AiResponse, BoxFuture, Error};
+use latchlm_core::{AiModel, AiProvider, AiRequest, AiResponse, BoxFuture, Error, Result};
 use latchlm_macros::AiModel;
 
 use secrecy::{ExposeSecret, SecretString};
@@ -103,7 +103,7 @@ impl GeminiBuilder {
     }
 
     /// Loads the API key from the `GEMINI_API_KEY` environment variable
-    pub fn api_key_from_env(mut self) -> Result<Self, std::env::VarError> {
+    pub fn api_key_from_env(mut self) -> std::result::Result<Self, std::env::VarError> {
         let api_key = std::env::var("GEMINI_API_KEY")?;
 
         self.api_key = Some(SecretString::from(api_key));
@@ -117,7 +117,7 @@ impl GeminiBuilder {
     ///
     /// # Panics
     /// Panics if the base URL is not set, which should never happen since it has a default.
-    pub fn build(self) -> latchlm_core::Result<Gemini> {
+    pub fn build(self) -> Result<Gemini> {
         let client = self.client.ok_or(GeminiError::MissingClientError)?;
         let api_key = self.api_key.ok_or(GeminiError::MissingApiKeyError)?;
 
@@ -240,11 +240,7 @@ impl Gemini {
     /// }
     /// ```
     /// [`Error`]: latchlm_core::Error
-    pub async fn request(
-        &self,
-        model: GeminiModel,
-        request: AiRequest,
-    ) -> latchlm_core::Result<GeminiResponse> {
+    pub async fn request(&self, model: GeminiModel, request: AiRequest) -> Result<GeminiResponse> {
         let url = self
             .base_url
             .join(&format!(
@@ -292,7 +288,7 @@ impl AiProvider for Gemini {
         &self,
         model: &dyn AiModel,
         request: AiRequest,
-    ) -> BoxFuture<'_, latchlm_core::Result<AiResponse>> {
+    ) -> BoxFuture<'_, Result<AiResponse>> {
         let Ok(model) = model.as_ref().parse() else {
             let model_name = model.as_ref().to_owned();
             return Box::pin(ready(Err(Error::InvalidModelError(model_name))));
