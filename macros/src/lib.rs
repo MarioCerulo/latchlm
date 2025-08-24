@@ -159,6 +159,13 @@ fn ai_model_derive_impl(input: DeriveInput) -> syn::Result<TokenStream> {
             }
         }
 
+        impl ::core::str::FromStr for #name {
+            type Err = ::latchlm_core::Error;
+            fn from_str(s: &str) -> ::latchlm_core::Result<Self> {
+                Self::try_from(s)
+            }
+        }
+
         impl ::core::convert::TryFrom<&str> for #name {
             type Error = ::latchlm_core::Error;
             fn try_from(value: &str) -> ::latchlm_core::Result<Self> {

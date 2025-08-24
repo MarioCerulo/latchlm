@@ -293,8 +293,7 @@ impl AiProvider for Gemini {
         model: &dyn AiModel,
         request: AiRequest,
     ) -> BoxFuture<'_, latchlm_core::Result<AiResponse>> {
-        use std::convert::TryFrom;
-        let Ok(model) = GeminiModel::try_from(model.as_ref()) else {
+        let Ok(model) = model.as_ref().parse() else {
             let model_name = model.as_ref().to_owned();
             return Box::pin(ready(Err(Error::InvalidModelError(model_name))));
         };

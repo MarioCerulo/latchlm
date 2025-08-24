@@ -1,4 +1,4 @@
-use latchlm_core::{AiProvider, AiRequest};
+use latchlm_core::{AiModel, AiProvider, AiRequest};
 use latchlm_openai::{Openai, OpenaiModel};
 use secrecy::{ExposeSecret, SecretString};
 use wiremock::{
@@ -242,4 +242,46 @@ async fn test_openai_error_unhautenticated() {
         .await;
 
     assert!(res.is_err())
+}
+
+#[tokio::test]
+async fn test_openai_error_invalid_model() {
+    struct InvalidModel;
+
+    impl AsRef<str> for InvalidModel {
+        fn as_ref(&self) -> &str {
+            "Invalid model"
+        }
+    }
+
+    impl AiModel for InvalidModel {
+        fn model_id(&self) -> latchlm_core::ModelId<'_> {
+            latchlm_core::ModelId {
+                id: self.as_ref().into(),
+                name: self.as_ref().into(),
+            }
+        }
+    }
+
+    let openai = Openai::new_with_base_url(
+        reqwest::Client::new(),
+        reqwest::Url::parse("http://test.test").expect("Failed to parse URL"),
+        SecretString::from("api-key"),
+    );
+
+    let request = AiRequest {
+        text: "Test".to_string(),
+    };
+
+    let err = openai
+        .send_request(&InvalidModel, request)
+        .await
+        .expect_err("Expected an error but got a successful response");
+
+    match err {
+        latchlm_core::Error::InvalidModelError(invalid_model) => {
+            assert_eq!(invalid_model, InvalidModel.as_ref());
+        }
+        _ => panic!("Expected InvalidModelError"),
+    }
 }

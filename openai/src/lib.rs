@@ -315,7 +315,7 @@ impl AiProvider for Openai {
         model: &dyn latchlm_core::AiModel,
         request: AiRequest,
     ) -> latchlm_core::BoxFuture<'_, latchlm_core::Result<latchlm_core::AiResponse>> {
-        let Ok(model) = OpenaiModel::try_from(model.as_ref()) else {
+        let Ok(model) = model.as_ref().parse() else {
             let model_name = model.as_ref();
             return Box::pin(ready(Err(Error::InvalidModelError(model_name.into()))));
         };
