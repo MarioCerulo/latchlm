@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["latchlm", "core", "gemini", "openai", "xtask", "macros"]
+members = ["latchlm", "core", "gemini", "openai", "xtask", "macros", "openrouter"]
 
 [workspace.package]
 edition = "2024"

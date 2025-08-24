@@ -748,15 +748,13 @@ dependencies = [
 name = "latchlm"
 version = "0.1.0"
 dependencies = [
- "latchlm-core 0.1.0",
+ "latchlm-core 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "thiserror",
 ]
 
 [[package]]
 name = "latchlm-core"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a4a49765bfad5727962e537c035b0fcf1c23e44300ea1c45187d63c82ab0a74f"
+version = "0.2.0"
 dependencies = [
  "reqwest",
  "serde",
@@ -767,6 +765,8 @@ dependencies = [
 [[package]]
 name = "latchlm-core"
 version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a37904f10cf2fdbe71c86b8ec11a3f18c82e9463e086ca4d11fc7e512c2b9031"
 dependencies = [
  "reqwest",
  "serde",
@@ -809,6 +809,21 @@ dependencies = [
  "latchlm-core 0.2.0",
  "latchlm-macros",
  "latchlm-openai",
+ "proptest",
+ "reqwest",
+ "secrecy",
+ "serde",
+ "serde_json",
+ "tokio",
+ "wiremock",
+]
+
+[[package]]
+name = "latchlm-openrouter"
+version = "0.1.0"
+dependencies = [
+ "latchlm-core 0.2.0",
+ "latchlm-openrouter",
  "proptest",
  "reqwest",
  "secrecy",

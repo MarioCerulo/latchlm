@@ -31,6 +31,9 @@
 !openai/
 !openai/**
 
+!openrouter/
+!openrouter/**
+
 !macros/
 !macros/**
 
