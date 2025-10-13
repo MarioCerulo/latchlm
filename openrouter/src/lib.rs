@@ -6,6 +6,7 @@
 //!
 //! This crate implements a client for interacting with the OpenRouter API.
 
+use futures::{StreamExt, stream::BoxStream};
 use latchlm_core::{AiModel, AiProvider, AiRequest, AiResponse, BoxFuture, Error, ModelId, Result};
 use reqwest::{Client, Url};
 use secrecy::{ExposeSecret, SecretString};
@@ -366,6 +367,90 @@ impl Openrouter {
         let response = serde_json::from_slice(&bytes)?;
 
         Ok(response)
+    }
+
+    pub async fn streaming_request(
+        &self,
+        model: &OpenrouterModel<'_>,
+        request: AiRequest,
+    ) -> Result<BoxStream<'_, Result<OpenrouterStreamResponse>>> {
+        let mut headers = reqwest::header::HeaderMap::new();
+        headers.insert(
+            "Content-Type",
+            "application/json"
+                .parse()
+                .expect("Failed to parse content-type"),
+        );
+
+        if let Some(http_referer) = &self.http_referer {
+            headers.insert(
+                "HTTP-Referer",
+                http_referer.parse().expect("Failed to parse http-referer"),
+            );
+        }
+
+        if let Some(x_title) = &self.x_title {
+            headers.insert("X-Title", x_title.parse().expect("Failed to parse x-title"));
+        }
+
+        let request = serde_json::json!({
+            "model": model.as_ref(),
+            "messages": [
+                {
+                    "role": "user",
+                    "content": request.text
+                }
+            ],
+            "stream": true
+        });
+
+        let url = self
+            .base_url
+            .join("chat/completions")
+            .expect("Failed to join URL");
+
+        let response = self
+            .client
+            .post(url)
+            .headers(headers)
+            .bearer_auth(self.api_key.expose_secret())
+            .json(&request)
+            .send()
+            .await?;
+
+        if !response.status().is_success() {
+            return Err(Error::ApiError {
+                status: response.status().as_u16(),
+                message: response.text().await?,
+            });
+        }
+
+        let stream = response.bytes_stream().filter_map(|result| async {
+            let bytes = match result {
+                Ok(bytes) => bytes,
+                Err(err) => {
+                    return Some(Err(Error::ProviderError {
+                        provider: "OpenRouter".to_string(),
+                        error: err.to_string(),
+                    }));
+                }
+            };
+
+            let line = String::from_utf8_lossy(&bytes);
+
+            if line.starts_with(":") || line.trim() == "data: [DONE]" {
+                return None;
+            }
+
+            let data = match line.strip_prefix("data: ") {
+                Some(data) => data,
+                None => return None,
+            };
+
+            Some(serde_json::from_str::<OpenrouterStreamResponse>(data).map_err(Into::into))
+        });
+
+        Ok(Box::pin(stream))
     }
 
     /// Returns a list of available models.

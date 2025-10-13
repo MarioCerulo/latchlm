@@ -69,14 +69,14 @@ impl From<OpenrouterResponse> for AiResponse {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct ModelsItem {
     id: String,
     name: String,
 }
 
 /// Represents a list of available models.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct ModelsList {
     data: Vec<ModelsItem>,
 }
@@ -91,6 +91,43 @@ impl From<ModelsList> for Vec<ModelId<'_>> {
             });
         }
         list
+    }
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct StreamDelta {
+    pub role: Option<String>,
+    pub content: Option<String>,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct StreamChoice {
+    pub index: u64,
+    pub delta: StreamDelta,
+    pub finish_reason: Option<String>,
+    pub native_finish_reason: Option<String>,
+    pub logprobs: Option<serde_json::Value>,
+}
+
+/// Represents a single streaming chunk from the OpenRouter API.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct OpenrouterStreamResponse {
+    pub id: String,
+    pub provider: String,
+    pub model: String,
+    pub object: String,
+    pub created: u64,
+    pub choices: Vec<StreamChoice>,
+    pub usage: Option<Usage>,
+}
+
+impl OpenrouterStreamResponse {
+    pub fn extract_text(&self) -> String {
+        self.choices
+            .iter()
+            .map(|choice| choice.delta.content.clone().unwrap_or_default())
+            .collect::<Vec<String>>()
+            .join(" ")
     }
 }
 
