@@ -7,7 +7,7 @@ error: missing #[model] attribute with name
 error[E0599]: no method named `as_ref` found for enum `Model` in the current scope
   --> tests/compile_fail/missing_name.rs:13:20
    |
-7  | enum Model {
+ 7 | enum Model {
    | ---------- method `as_ref` not found for this enum
 ...
 13 |     Model::Variant.as_ref();
