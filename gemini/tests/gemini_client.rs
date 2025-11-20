@@ -2,6 +2,9 @@
 // If a copy of the MPL was not distributed with this file, You can obtain one at
 // https://mozilla.org/MPL/2.0/.
 
+#![allow(clippy::unwrap_used)]
+#![allow(clippy::expect_used)]
+
 use latchlm_core::{AiModel, AiProvider, AiRequest, Error};
 use latchlm_gemini::{Gemini, GeminiModel};
 use secrecy::{ExposeSecret, SecretString};

@@ -38,7 +38,7 @@ pub enum Output {
 
 impl Default for Output {
     fn default() -> Self {
-        Output::Content {
+        Self::Content {
             kind: String::new(),
             id: String::new(),
             status: None,
@@ -132,6 +132,7 @@ impl From<OpenaiResponse> for AiResponse {
 }
 
 impl OpenaiResponse {
+    #[must_use]
     pub fn extract_text(&self) -> String {
         self.output
             .iter()

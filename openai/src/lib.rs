@@ -70,8 +70,8 @@ pub enum OpenaiError {
 impl std::fmt::Display for OpenaiError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            OpenaiError::MissingClientError => write!(f, "HTTP client is required"),
-            OpenaiError::MissingApiKeyError => write!(f, "API key is required"),
+            Self::MissingClientError => write!(f, "HTTP client is required"),
+            Self::MissingApiKeyError => write!(f, "API key is required"),
         }
     }
 }
@@ -79,11 +79,11 @@ impl std::fmt::Display for OpenaiError {
 impl From<OpenaiError> for Error {
     fn from(value: OpenaiError) -> Self {
         match value {
-            OpenaiError::MissingApiKeyError => Error::ProviderError {
+            OpenaiError::MissingApiKeyError => Self::ProviderError {
                 provider: "OpenAI".into(),
                 error: "Missing API Key".into(),
             },
-            OpenaiError::MissingClientError => Error::ProviderError {
+            OpenaiError::MissingClientError => Self::ProviderError {
                 provider: "OpenAI".into(),
                 error: "Missing request::Client".into(),
             },
@@ -104,6 +104,7 @@ impl OpenaiBuilder {
     /// # Returns
     ///
     /// A new `OpenaiBuilder` instance.
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
@@ -117,6 +118,7 @@ impl OpenaiBuilder {
     /// # Returns
     ///
     /// The updated `OpenaiBuilder` instance.
+    #[must_use]
     pub fn client(mut self, client: reqwest::Client) -> Self {
         self.client = Some(client);
         self
@@ -131,6 +133,7 @@ impl OpenaiBuilder {
     /// # Returns
     ///
     /// The updated `OpenaiBuilder` instance.
+    #[must_use]
     pub fn api_key(mut self, api_key: SecretString) -> Self {
         self.api_key = Some(api_key);
         self
@@ -177,6 +180,8 @@ impl Openai {
     /// # Returns
     ///
     /// A new `Openai` client.
+    #[allow(clippy::expect_used)]
+    #[must_use]
     pub fn new(client: reqwest::Client, api_key: SecretString) -> Self {
         Self {
             client,
@@ -200,6 +205,7 @@ impl Openai {
     ///
     /// A new `Openai` client.
     #[cfg(feature = "test-utils")]
+    #[must_use]
     pub fn new_with_base_url(
         client: reqwest::Client,
         base_url: reqwest::Url,
@@ -213,6 +219,7 @@ impl Openai {
     }
 
     /// Create a new [`OpenaiBuilder`] instance.
+    #[must_use]
     pub fn builder() -> OpenaiBuilder {
         OpenaiBuilder::new()
     }
@@ -275,6 +282,7 @@ impl Openai {
     /// ```
     ///
     /// [`Error`]: latchlm_core::Error
+    #[allow(clippy::expect_used)]
     pub async fn request(&self, model: OpenaiModel, request: AiRequest) -> Result<OpenaiResponse> {
         let mut header_map = HeaderMap::new();
         header_map.insert(CONTENT_TYPE, HeaderValue::from_static("application/json"));
@@ -308,6 +316,13 @@ impl Openai {
         Ok(response)
     }
 
+    /// Sends a streaming request to the OpenAI and returns a stream of responses.
+    ///
+    /// # Arguments
+    ///
+    /// * `model` - The model to use for the request.
+    /// * `request` - The request to send.
+    #[allow(clippy::expect_used)]
     pub async fn streaming_request(
         &self,
         model: OpenaiModel,
@@ -339,11 +354,14 @@ impl Openai {
         }
 
         let stream = response.bytes_stream().eventsource().map(|result| {
-            let Ok(response) = result else {
-                return Err(Error::ProviderError {
-                    provider: "OpenAI".into(),
-                    error: result.err().unwrap().to_string(),
-                });
+            let response = match result {
+                Ok(response) => response,
+                Err(err) => {
+                    return Err(Error::ProviderError {
+                        provider: "OpenAI".into(),
+                        error: err.to_string(),
+                    });
+                }
             };
             let response: OpenaiStreamResponse = serde_json::from_str(&response.data)?;
             Ok(response)
@@ -369,6 +387,7 @@ impl AiProvider for Openai {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
     use proptest::prelude::*;

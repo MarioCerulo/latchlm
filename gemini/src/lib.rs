@@ -56,11 +56,11 @@ pub enum GeminiError {
 impl From<GeminiError> for Error {
     fn from(value: GeminiError) -> Self {
         match value {
-            GeminiError::MissingApiKeyError => Error::ProviderError {
+            GeminiError::MissingApiKeyError => Self::ProviderError {
                 provider: "Gemini".into(),
                 error: "Missing API key".into(),
             },
-            GeminiError::MissingClientError => Error::ProviderError {
+            GeminiError::MissingClientError => Self::ProviderError {
                 provider: "Gemini".into(),
                 error: "Missing reqwest::Client".into(),
             },
@@ -73,8 +73,8 @@ impl std::error::Error for GeminiError {}
 impl std::fmt::Display for GeminiError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            GeminiError::MissingApiKeyError => write!(f, "API key is required"),
-            GeminiError::MissingClientError => write!(f, "HTTP client is required"),
+            Self::MissingApiKeyError => write!(f, "API key is required"),
+            Self::MissingClientError => write!(f, "HTTP client is required"),
         }
     }
 }
@@ -88,17 +88,20 @@ pub struct GeminiBuilder {
 
 impl GeminiBuilder {
     /// Create a new builder instance with default settings
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
 
     /// Sets a custom HTTP client
+    #[must_use]
     pub fn client(mut self, client: reqwest::Client) -> Self {
         self.client = Some(client);
         self
     }
 
     /// Sets the API key
+    #[must_use]
     pub fn api_key(mut self, api_key: SecretString) -> Self {
         self.api_key = Some(api_key);
         self
@@ -147,6 +150,8 @@ impl Gemini {
     ///
     /// * `client` - A reference to a preconfigured [`reqwest::Client`].
     /// * `api_key` - The API key wrapped in `SecretString` for secure handling
+    #[allow(clippy::expect_used)]
+    #[must_use]
     pub fn new(client: reqwest::Client, api_key: SecretString) -> Self {
         Self {
             client,
@@ -169,6 +174,7 @@ impl Gemini {
     /// # Feature
     /// Requires the `test-utils` feature flag.
     #[cfg(feature = "test-utils")]
+    #[must_use]
     pub fn new_with_base_url(
         client: reqwest::Client,
         base_url: reqwest::Url,
@@ -182,6 +188,7 @@ impl Gemini {
     }
 
     /// Creates a new [`GeminiBuilder`] instance.
+    #[must_use]
     pub fn builder() -> GeminiBuilder {
         GeminiBuilder::new()
     }
@@ -242,6 +249,7 @@ impl Gemini {
     /// }
     /// ```
     /// [`Error`]: latchlm_core::Error
+    #[allow(clippy::expect_used)]
     pub async fn request(&self, model: GeminiModel, request: AiRequest) -> Result<GeminiResponse> {
         let url = self
             .base_url
@@ -290,6 +298,7 @@ impl Gemini {
     ///
     /// * `model` - The model to use for the request.
     /// * `request` - The request to send.
+    #[allow(clippy::expect_used)]
     pub async fn streaming_request(
         &self,
         model: GeminiModel,
@@ -363,6 +372,7 @@ impl AiProvider for Gemini {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
     use proptest::prelude::*;

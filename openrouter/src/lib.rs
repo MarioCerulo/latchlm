@@ -55,9 +55,9 @@ pub enum OpenrouterError {
 impl std::fmt::Display for OpenrouterError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            OpenrouterError::MissingClientError => write!(f, "HTTP client is required"),
-            OpenrouterError::MissingApiKeyError => write!(f, "API key is required"),
-            OpenrouterError::HeaderParseError(err) => write!(f, "Failed to parse header: {err}"),
+            Self::MissingClientError => write!(f, "HTTP client is required"),
+            Self::MissingApiKeyError => write!(f, "API key is required"),
+            Self::HeaderParseError(err) => write!(f, "Failed to parse header: {err}"),
         }
     }
 }
@@ -65,15 +65,15 @@ impl std::fmt::Display for OpenrouterError {
 impl From<OpenrouterError> for Error {
     fn from(value: OpenrouterError) -> Self {
         match value {
-            OpenrouterError::MissingClientError => Error::ProviderError {
+            OpenrouterError::MissingClientError => Self::ProviderError {
                 provider: "OpenRouter".to_owned(),
                 error: "Missing reqwest::Client".to_owned(),
             },
-            OpenrouterError::MissingApiKeyError => Error::ProviderError {
+            OpenrouterError::MissingApiKeyError => Self::ProviderError {
                 provider: "OpenRouter".to_owned(),
                 error: "Missing API key".to_owned(),
             },
-            OpenrouterError::HeaderParseError(err) => Error::ProviderError {
+            OpenrouterError::HeaderParseError(err) => Self::ProviderError {
                 provider: "OpenRouter".to_owned(),
                 error: format!("Failed to parse header: {err}"),
             },
@@ -97,6 +97,7 @@ impl OpenrouterBuilder {
     ///
     /// # Returns
     /// An new [`OpenrouterBuilder`] instance.
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
@@ -110,6 +111,7 @@ impl OpenrouterBuilder {
     /// # Returns
     ///
     /// The updated [`OpenrouterBuilder`] instance.
+    #[must_use]
     pub fn client(mut self, client: Client) -> Self {
         self.client = Some(client);
         self
@@ -124,6 +126,7 @@ impl OpenrouterBuilder {
     /// # Returns
     ///
     /// The updated [`OpenrouterBuilder`] instance.
+    #[must_use]
     pub fn api_key(mut self, api_key: SecretString) -> Self {
         self.api_key = Some(api_key);
         self
@@ -146,6 +149,7 @@ impl OpenrouterBuilder {
     /// # Returns
     ///
     /// The updated [`OpenrouterBuilder`] instance.
+    #[must_use]
     pub fn http_referer(mut self, http_referer: String) -> Self {
         self.http_referer = Some(http_referer);
         self
@@ -160,6 +164,7 @@ impl OpenrouterBuilder {
     /// # Returns
     ///
     /// The updated [`OpenrouterBuilder`] instance.
+    #[must_use]
     pub fn x_title(mut self, x_title: String) -> Self {
         self.x_title = Some(x_title);
         self
@@ -208,6 +213,8 @@ impl Openrouter {
     /// # Returns
     ///
     /// The [`Openrouter`] client.
+    #[allow(clippy::expect_used)]
+    #[must_use]
     pub fn new(
         client: Client,
         api_key: SecretString,
@@ -238,6 +245,7 @@ impl Openrouter {
     ///
     /// The [`Openrouter`] client.
     #[cfg(feature = "test-utils")]
+    #[must_use]
     pub fn new_with_base_url(client: Client, base_url: Url, api_key: SecretString) -> Self {
         Self {
             base_url,
@@ -249,6 +257,7 @@ impl Openrouter {
     }
 
     /// Creates a new [`Openrouter`] client builder.
+    #[must_use]
     pub fn builder() -> OpenrouterBuilder {
         OpenrouterBuilder::new()
     }
@@ -311,6 +320,7 @@ impl Openrouter {
     ///
     /// [`AiRequest`]: latchlm_core::AiRequest
     /// [`Error`]: latchlm_core::Error
+    #[allow(clippy::expect_used)]
     pub async fn request(
         &self,
         model: OpenrouterModel,
@@ -319,9 +329,7 @@ impl Openrouter {
         let mut headers = reqwest::header::HeaderMap::new();
         headers.insert(
             "Content-Type",
-            "application/json"
-                .parse()
-                .expect("Failed to parse content-type"),
+            reqwest::header::HeaderValue::from_static("application/json"),
         );
 
         if let Some(http_referer) = &self.http_referer {
@@ -379,6 +387,7 @@ impl Openrouter {
     ///
     /// * `model` - The model to use for the request.
     /// * `request` - The request to send.
+    #[allow(clippy::expect_used)]
     pub async fn streaming_request(
         &self,
         model: OpenrouterModel,
@@ -387,9 +396,7 @@ impl Openrouter {
         let mut headers = reqwest::header::HeaderMap::new();
         headers.insert(
             "Content-Type",
-            "application/json"
-                .parse()
-                .expect("Failed to parse content-type"),
+            reqwest::header::HeaderValue::from_static("application/json"),
         );
 
         if let Some(http_referer) = &self.http_referer {
@@ -472,6 +479,7 @@ impl Openrouter {
     /// - The response cannot be parsed.
     ///
     /// [`Error`]: latchlm_core::Error
+    #[allow(clippy::expect_used)]
     pub async fn models(&self) -> Result<Vec<ModelId<'_>>> {
         let url = self.base_url.join("models").expect("Failed to join URL");
         let response = self.client.get(url).send().await?;

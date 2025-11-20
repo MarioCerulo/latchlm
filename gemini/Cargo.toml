@@ -33,3 +33,6 @@ wiremock.workspace = true
 tokio.workspace = true
 proptest.workspace = true
 latchlm-gemini = { path = ".", features = ["test-utils"] }
+
+[lints]
+workspace = true

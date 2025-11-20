@@ -34,3 +34,13 @@ eventsource-stream = "0.2.3"
 version = "0.12"
 default-features = false
 features = ["json", "rustls-tls"]
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+
+[workspace.lints.clippy]
+unwrap_used = "deny"
+expect_used = "deny"
+
+use_self = "warn"
+must_use_candidate = "warn"

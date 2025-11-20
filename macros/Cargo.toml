@@ -21,3 +21,6 @@ trybuild = "1"
 serde.workspace = true
 
 latchlm-core = { path = "../core", version = "0.2.0" }
+
+[lints]
+workspace = true

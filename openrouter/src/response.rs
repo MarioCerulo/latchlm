@@ -45,6 +45,7 @@ pub struct OpenrouterResponse {
 }
 
 impl OpenrouterResponse {
+    #[must_use]
     pub fn extract_text(&self) -> String {
         self.choices
             .iter()
@@ -58,7 +59,7 @@ impl From<OpenrouterResponse> for AiResponse {
     fn from(response: OpenrouterResponse) -> Self {
         let text = response.extract_text();
 
-        AiResponse {
+        Self {
             text,
             token_usage: TokenUsage {
                 input_tokens: Some(response.usage.prompt_tokens),
@@ -122,6 +123,7 @@ pub struct OpenrouterStreamResponse {
 }
 
 impl OpenrouterStreamResponse {
+    #[must_use]
     pub fn extract_text(&self) -> String {
         self.choices
             .iter()

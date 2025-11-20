@@ -63,8 +63,8 @@ pub struct GeminiResponse {
 }
 
 impl From<GeminiResponse> for AiResponse {
-    fn from(value: GeminiResponse) -> AiResponse {
-        AiResponse {
+    fn from(value: GeminiResponse) -> Self {
+        Self {
             text: value.extract_text(),
             token_usage: TokenUsage {
                 input_tokens: Some(value.usage_metadata.prompt_token_count),
@@ -76,6 +76,7 @@ impl From<GeminiResponse> for AiResponse {
 }
 
 impl GeminiResponse {
+    #[must_use]
     pub fn extract_text(&self) -> String {
         self.candidates
             .iter()
