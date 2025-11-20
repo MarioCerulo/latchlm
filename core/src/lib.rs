@@ -53,8 +53,15 @@ pub type BoxFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
 ///     }
 /// }
 /// ```
-pub trait AiModel: AsRef<str> + Send + Sync {
+pub trait AiModel: AsRef<str> + Send + Sync + 'static {
+    fn as_any(&self) -> &dyn std::any::Any;
     fn model_id(&self) -> ModelId<'_>;
+}
+
+impl dyn AiModel {
+    pub fn downcast<M: 'static + Clone>(&self) -> Option<M> {
+        self.as_any().downcast_ref::<M>().cloned()
+    }
 }
 
 /// A unique identifier for an LLM model.
