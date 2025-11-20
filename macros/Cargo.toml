@@ -18,5 +18,6 @@ proc-macro2 = "1"
 
 [dev-dependencies]
 trybuild = "1"
-latchlm-core = { path = "../core" }
-serde = { workspace = true }
+serde.workspace = true
+
+latchlm-core = { path = "../core", version = "0.2.0" }

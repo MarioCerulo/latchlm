@@ -143,6 +143,10 @@ fn ai_model_derive_impl(input: DeriveInput) -> syn::Result<TokenStream> {
 
     let expanded = quote! {
         impl AiModel for #name {
+            fn as_any(&self) -> &dyn ::std::any::Any {
+                self
+            }
+
             fn model_id(&self) -> ::latchlm_core::ModelId {
                 match self {
                     #(#model_id_arms),*
