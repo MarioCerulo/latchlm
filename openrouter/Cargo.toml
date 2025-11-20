@@ -16,15 +16,16 @@ categories.workspace = true
 test-utils = []
 
 [dependencies]
-serde = { workspace = true }
-serde_json = { workspace = true }
+serde.workspace = true
+serde_json.workspace = true
 reqwest = { workspace = true, features = ["stream"] }
-secrecy = { workspace = true }
-futures = { workspace = true }
-latchlm-core = { path = "../core" }
+secrecy.workspace = true
+futures.workspace = true
+eventsource-stream.workspace = true
+latchlm-core = { path = "../core", version = "0.2.0" }
 
 [dev-dependencies]
-wiremock = { workspace = true }
-tokio = { workspace = true }
-proptest = { workspace = true }
+wiremock.workspace = true
+tokio.workspace = true
+proptest.workspace = true
 latchlm-openrouter = { path = ".", features = ["test-utils"] }

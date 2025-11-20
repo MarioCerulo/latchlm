@@ -6,36 +6,40 @@
 //!
 //! This crate implements a client for interacting with the OpenRouter API.
 
+use eventsource_stream::Eventsource;
 use futures::{StreamExt, stream::BoxStream};
 use latchlm_core::{AiModel, AiProvider, AiRequest, AiResponse, BoxFuture, Error, ModelId, Result};
 use reqwest::{Client, Url};
 use secrecy::{ExposeSecret, SecretString};
-use std::{borrow::Cow, env::VarError, sync::Arc};
+use std::{borrow::Cow, env::VarError, future::ready, sync::Arc};
 
 mod response;
 pub use response::*;
 
 /// OpenRouter model identifier.
 #[derive(Debug, Clone)]
-pub struct OpenrouterModel<'a>(Cow<'a, str>);
+pub struct OpenrouterModel(String);
 
-impl AsRef<str> for OpenrouterModel<'_> {
+impl AsRef<str> for OpenrouterModel {
     fn as_ref(&self) -> &str {
         &self.0
     }
 }
 
-impl AiModel for OpenrouterModel<'_> {
+impl AiModel for OpenrouterModel {
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
     fn model_id(&self) -> ModelId<'_> {
         ModelId {
-            id: self.0.clone(),
-            name: self.0.clone(),
+            id: Cow::Borrowed(&self.0),
+            name: Cow::Borrowed(&self.0),
         }
     }
 }
 
-impl<'a> OpenrouterModel<'a> {
-    pub fn new<S: Into<Cow<'a, str>>>(model_name: S) -> Self {
+impl OpenrouterModel {
+    pub fn new<S: Into<String>>(model_name: S) -> Self {
         Self(model_name.into())
     }
 }
@@ -309,7 +313,7 @@ impl Openrouter {
     /// [`Error`]: latchlm_core::Error
     pub async fn request(
         &self,
-        model: &OpenrouterModel<'_>,
+        model: OpenrouterModel,
         request: AiRequest,
     ) -> Result<OpenrouterResponse> {
         let mut headers = reqwest::header::HeaderMap::new();
@@ -369,9 +373,15 @@ impl Openrouter {
         Ok(response)
     }
 
+    /// Sends a streaming request to the OpenRouter and returns a stream of responses.
+    ///
+    /// # Arguments
+    ///
+    /// * `model` - The model to use for the request.
+    /// * `request` - The request to send.
     pub async fn streaming_request(
         &self,
-        model: &OpenrouterModel<'_>,
+        model: OpenrouterModel,
         request: AiRequest,
     ) -> Result<BoxStream<'_, Result<OpenrouterStreamResponse>>> {
         let mut headers = reqwest::header::HeaderMap::new();
@@ -425,30 +435,27 @@ impl Openrouter {
             });
         }
 
-        let stream = response.bytes_stream().filter_map(|result| async {
-            let bytes = match result {
-                Ok(bytes) => bytes,
-                Err(err) => {
-                    return Some(Err(Error::ProviderError {
-                        provider: "OpenRouter".to_string(),
-                        error: err.to_string(),
-                    }));
+        let stream = response
+            .bytes_stream()
+            .eventsource()
+            .filter_map(|result| async {
+                let event = match result {
+                    Ok(event) => event,
+                    Err(err) => {
+                        return Some(Err(Error::ProviderError {
+                            provider: "OpenRouter".to_string(),
+                            error: err.to_string(),
+                        }));
+                    }
+                };
+                let data = event.data;
+
+                if data.contains("[DONE]") {
+                    return None;
                 }
-            };
 
-            let line = String::from_utf8_lossy(&bytes);
-
-            if line.starts_with(":") || line.trim() == "data: [DONE]" {
-                return None;
-            }
-
-            let data = match line.strip_prefix("data: ") {
-                Some(data) => data,
-                None => return None,
-            };
-
-            Some(serde_json::from_str::<OpenrouterStreamResponse>(data).map_err(Into::into))
-        });
+                Some(serde_json::from_str::<OpenrouterStreamResponse>(&data).map_err(Into::into))
+            });
 
         Ok(Box::pin(stream))
     }
@@ -488,7 +495,12 @@ impl AiProvider for Openrouter {
         model: &dyn AiModel,
         request: AiRequest,
     ) -> BoxFuture<'_, Result<AiResponse>> {
-        let model = OpenrouterModel::new(model.as_ref().to_string());
-        Box::pin(async move { self.request(&model, request).await.map(Into::into) })
+        let Some(model) = model.downcast::<OpenrouterModel>() else {
+            let model_name = model.as_ref();
+            return Box::pin(ready(Err(Error::InvalidModelError(model_name.into()))));
+        };
+
+        let model = model.clone();
+        Box::pin(async move { self.request(model, request).await.map(Into::into) })
     }
 }
