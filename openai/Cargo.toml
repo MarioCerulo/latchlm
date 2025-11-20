@@ -18,15 +18,17 @@ publish = false
 test-utils = []
 
 [dependencies]
-serde = { workspace = true }
-serde_json = { workspace = true }
-reqwest = { workspace = true }
-secrecy = { workspace = true }
-latchlm-core = { path = "../core" }
-latchlm-macros = { path = "../macros" }
+serde.workspace = true
+serde_json.workspace = true
+reqwest.workspace = true
+secrecy.workspace = true
+futures.workspace = true
+eventsource-stream.workspace = true
+latchlm-core = { path = "../core", version = "0.2.0" }
+latchlm-macros = { path = "../macros", version = "0.1.0" }
 
 [dev-dependencies]
-wiremock = { workspace = true }
-tokio = { workspace = true }
-proptest = { workspace = true }
+wiremock.workspace = true
+tokio.workspace = true
+proptest.workspace = true
 latchlm-openai = { path = ".", features = ["test-utils"] }

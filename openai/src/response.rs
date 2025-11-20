@@ -114,7 +114,7 @@ pub struct OpenaiResponse {
     top_p: f32,
     truncation: String,
     usage: Usage,
-    user: Option<String>,
+    user: Option<serde_json::Value>,
     metadata: serde_json::Value,
 }
 
@@ -144,6 +144,104 @@ impl OpenaiResponse {
             .collect::<Vec<_>>()
             .join(" ")
     }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum OutputText {
+    Delta {
+        #[serde(rename = "type")]
+        kind: String,
+        item_id: String,
+        output_index: u64,
+        content_index: u64,
+        delta: String,
+    },
+    Done {
+        #[serde(rename = "type")]
+        kind: String,
+        item_id: String,
+        output_index: u64,
+        content_index: u64,
+        text: String,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Part {
+    #[serde(rename = "type")]
+    kind: String,
+    text: String,
+    annotations: Vec<serde_json::Value>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum ContentPart {
+    Added {
+        #[serde(rename = "type")]
+        kind: String,
+        item_id: String,
+        output_index: u64,
+        content_index: u64,
+        part: Part,
+    },
+    Done {
+        #[serde(rename = "type")]
+        kind: String,
+        item_id: u64,
+        output_index: u64,
+        content_index: u64,
+        part: Part,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Item {
+    id: String,
+    #[serde(rename = "type")]
+    kind: String,
+    status: String,
+    role: String,
+    content: Vec<Content>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum OutputItem {
+    Added {
+        #[serde(rename = "type")]
+        kind: String,
+        output_index: u64,
+        item: Item,
+    },
+    Done {
+        #[serde(rename = "type")]
+        kind: String,
+        output_index: u64,
+        item: Item,
+    },
+}
+
+/// Represents a single streaming chunk from the OpenAI API.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum OpenaiStreamResponse {
+    Created {
+        #[serde(rename = "type")]
+        kind: String,
+        response: OpenaiResponse,
+    },
+    InProgress {
+        #[serde(rename = "type")]
+        kind: String,
+        response: OpenaiResponse,
+    },
+    OutputItem(OutputItem),
+    ContentPart(ContentPart),
+    OutputText(OutputText),
+    Completed {
+        #[serde(rename = "type")]
+        kind: String,
+        response: OpenaiResponse,
+    },
 }
 
 #[cfg(test)]

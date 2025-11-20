@@ -265,6 +265,10 @@ async fn test_openai_error_invalid_model() {
     }
 
     impl AiModel for InvalidModel {
+        fn as_any(&self) -> &dyn std::any::Any {
+            self
+        }
+
         fn model_id(&self) -> ModelId<'_> {
             ModelId {
                 id: self.as_ref().into(),

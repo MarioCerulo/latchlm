@@ -7,6 +7,8 @@
 
 use std::{future::ready, sync::Arc};
 
+use eventsource_stream::Eventsource;
+use futures::{StreamExt, stream::BoxStream};
 use latchlm_core::{AiModel, AiProvider, AiRequest, AiResponse, BoxFuture, Error, Result};
 use latchlm_macros::AiModel;
 use reqwest::header::{AUTHORIZATION, CONTENT_TYPE, HeaderMap, HeaderValue};
@@ -18,7 +20,7 @@ pub use response::*;
 /// Variants representing supported OpenAI models.
 ///
 /// These variants map to the actual model identifiers used by the OpenAI API.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, AiModel)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, AiModel)]
 pub enum OpenaiModel {
     #[model(id = "o3", name = "GPT-o3")]
     Gpto3,
@@ -28,6 +30,8 @@ pub enum OpenaiModel {
     Gpto3Mini,
     #[model(id = "o4-mini", name = "GPT-o4 Mini")]
     Gpto4Mini,
+    #[model(id = "gpt-5.1", name = "GPT-5.1")]
+    Gpt51,
     #[model(id = "gpt-5", name = "GPT-5")]
     Gpt5,
     #[model(id = "gpt-5-mini", name = "GPT-5 Mini")]
@@ -303,6 +307,50 @@ impl Openai {
 
         Ok(response)
     }
+
+    pub async fn streaming_request(
+        &self,
+        model: OpenaiModel,
+        request: AiRequest,
+    ) -> Result<BoxStream<'_, Result<OpenaiStreamResponse>>> {
+        let mut headers = HeaderMap::new();
+        headers.insert(
+            AUTHORIZATION,
+            HeaderValue::from_str(&format!("Bearer {}", self.api_key.expose_secret()))
+                .expect("Invalid header value for Authorization"),
+        );
+
+        let request =
+            serde_json::json!({"model": model.as_ref(), "input": request.text, "stream": true});
+
+        let response = self
+            .client
+            .post(self.base_url.clone())
+            .headers(headers)
+            .json(&request)
+            .send()
+            .await?;
+
+        if !response.status().is_success() {
+            return Err(Error::ApiError {
+                status: response.status().as_u16(),
+                message: response.text().await?,
+            });
+        }
+
+        let stream = response.bytes_stream().eventsource().map(|result| {
+            let Ok(response) = result else {
+                return Err(Error::ProviderError {
+                    provider: "OpenAI".into(),
+                    error: result.err().unwrap().to_string(),
+                });
+            };
+            let response: OpenaiStreamResponse = serde_json::from_str(&response.data)?;
+            Ok(response)
+        });
+
+        Ok(Box::pin(stream))
+    }
 }
 
 impl AiProvider for Openai {
@@ -311,7 +359,7 @@ impl AiProvider for Openai {
         model: &dyn AiModel,
         request: AiRequest,
     ) -> BoxFuture<'_, Result<AiResponse>> {
-        let Ok(model) = model.as_ref().parse() else {
+        let Some(model) = model.downcast::<OpenaiModel>() else {
             let model_name = model.as_ref();
             return Box::pin(ready(Err(Error::InvalidModelError(model_name.into()))));
         };
@@ -332,6 +380,7 @@ mod tests {
             Just(OpenaiModel::Gpto3Pro),
             Just(OpenaiModel::Gpto3Mini),
             Just(OpenaiModel::Gpto4Mini),
+            Just(OpenaiModel::Gpt51),
             Just(OpenaiModel::Gpt5),
             Just(OpenaiModel::Gpt5Mini),
             Just(OpenaiModel::Gpt5Nano),
