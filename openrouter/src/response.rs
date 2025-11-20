@@ -84,7 +84,7 @@ pub struct ModelsList {
 
 impl From<ModelsList> for Vec<ModelId<'_>> {
     fn from(value: ModelsList) -> Self {
-        let mut list = Vec::new();
+        let mut list = vec![];
         for model in value.data {
             list.push(ModelId {
                 id: model.id.into(),

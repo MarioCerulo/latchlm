@@ -45,6 +45,10 @@ pub type BoxFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
 /// }
 ///
 /// impl AiModel for MyModel {
+///     fn as_any(&self) -> &dyn std::any::Any {
+///         self
+///     }
+///
 ///     fn model_id(&self) -> ModelId {
 ///         match self {
 ///             MyModel::Variant1 => ModelId { id: "mymodel-variant-1".into(), name: "My Model Variant 1".into()},

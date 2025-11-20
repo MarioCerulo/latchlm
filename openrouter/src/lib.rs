@@ -307,7 +307,7 @@ impl Openrouter {
     ///         .build()?;
     ///
     ///     let response = openrouter.request(
-    ///         &OpenrouterModel::new("openai/gpt-oss-20b"),
+    ///         OpenrouterModel::new("openai/gpt-oss-20b"),
     ///         AiRequest {
     ///             text: "Hello".into(),
     ///         }
