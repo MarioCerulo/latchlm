@@ -7,6 +7,8 @@
 
 use std::{future::ready, sync::Arc};
 
+use eventsource_stream::Eventsource;
+use futures::{StreamExt, stream::BoxStream};
 use latchlm_core::{AiModel, AiProvider, AiRequest, AiResponse, BoxFuture, Error, Result};
 use latchlm_macros::AiModel;
 
@@ -18,7 +20,7 @@ pub use response::*;
 /// Variants representing supported Gemini models.
 ///
 /// These variants map to the actual model identifiers used by the Gemini API.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, AiModel)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, AiModel)]
 #[non_exhaustive]
 pub enum GeminiModel {
     #[model(id = "gemini-2.0-flash", name = "Gemini 2.0 Flash")]
@@ -281,6 +283,68 @@ impl Gemini {
 
         Ok(response)
     }
+
+    /// Sends a streaming request to the Gemini API and prints chunks as they arrive.
+    ///
+    /// # Arguments
+    ///
+    /// * `model` - The model to use for the request.
+    /// * `request` - The request to send.
+    pub async fn streaming_request(
+        &self,
+        model: GeminiModel,
+        request: AiRequest,
+    ) -> Result<BoxStream<'_, Result<GeminiResponse>>> {
+        let url = self
+            .base_url
+            .join(&format!(
+                "/v1beta/models/{}:streamGenerateContent?alt=sse",
+                model.as_ref()
+            ))
+            .expect("Failed to parse URL");
+
+        let mut headers = reqwest::header::HeaderMap::new();
+        headers.insert(
+            Self::X_GOOG_API_KEY,
+            self.api_key
+                .expose_secret()
+                .parse()
+                .expect("Failed to parse header"),
+        );
+
+        let payload = serde_json::json!({"contents": [{"parts": {"text": request.text}}]});
+
+        let response = self
+            .client
+            .post(url)
+            .headers(headers)
+            .json(&payload)
+            .send()
+            .await?;
+
+        // WARNING: this implementation assumes that each event from the API
+        // is delivered as a single line starting with 'data: ', followed by a complete JSON object.
+        let stream = response
+            .bytes_stream()
+            .eventsource()
+            .filter_map(|event| async {
+                let event = match event {
+                    Ok(event) => event,
+                    Err(err) => {
+                        return Some(Err(Error::ProviderError {
+                            provider: "Gemini".to_string(),
+                            error: err.to_string(),
+                        }));
+                    }
+                };
+
+                let data = event.data;
+
+                Some(serde_json::from_str::<GeminiResponse>(&data).map_err(Into::into))
+            });
+
+        Ok(Box::pin(stream))
+    }
 }
 
 impl AiProvider for Gemini {
@@ -289,7 +353,7 @@ impl AiProvider for Gemini {
         model: &dyn AiModel,
         request: AiRequest,
     ) -> BoxFuture<'_, Result<AiResponse>> {
-        let Ok(model) = model.as_ref().parse() else {
+        let Some(model) = model.downcast::<GeminiModel>() else {
             let model_name = model.as_ref().to_owned();
             return Box::pin(ready(Err(Error::InvalidModelError(model_name))));
         };

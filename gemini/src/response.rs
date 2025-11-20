@@ -48,7 +48,7 @@ pub struct Content {
 #[serde(rename_all = "camelCase")]
 pub struct Candidate {
     content: Content,
-    finish_reason: String,
+    finish_reason: Option<String>,
     index: Option<u64>,
     avg_log_probs: Option<i64>,
 }
