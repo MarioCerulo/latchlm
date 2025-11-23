@@ -64,6 +64,7 @@ pub trait AiModel: AsRef<str> + Send + Sync + 'static {
 }
 
 impl dyn AiModel {
+    /// Downcasts the model to a specific type.
     pub fn downcast<M: 'static + Clone>(&self) -> Option<M> {
         self.as_any().downcast_ref::<M>().cloned()
     }
@@ -140,6 +141,21 @@ pub trait AiProvider: Send + Sync {
         request: AiRequest,
     ) -> BoxFuture<'_, Result<AiResponse>>;
 
+    /// Sends a message to the specified model and returns a stream of AI responses.
+    ///
+    /// # Arguments
+    ///
+    /// * `model` - The identifier of the model to use.
+    /// * `request` - The request to send to the model.
+    ///
+    /// # Returns
+    ///
+    /// A stream yielding either a `Response` or an `Error`
+    ///
+    /// # Errors
+    ///
+    /// Returns an `Error` if the request fails, the response status is not successful,
+    /// or if the response cannot be parsed.
     fn send_streaming(
         &self,
         model: &dyn AiModel,

@@ -38,7 +38,7 @@ pub type BoxFuture<T> = Pin<Box<dyn Future<Output = T> + Send + 'static>>;
 Key traits in LatchLM include `Send + Sync` bounds to ensure thread safety:
 
 ```rust
-pub trait AiModel: AsRef<str> + Send + Sync {}
+pub trait AiModel: AsRef<str> + Send + Sync {/* ... */}
 
 pub trait AiProvider: Send + Sync { /* ... */ }
 ```
