@@ -1,6 +1,6 @@
 [package]
 name = "latchlm"
-version = "0.1.0"
+version = "0.2.0"
 edition = { workspace = true }
 authors = { workspace = true }
 license = { workspace = true }
@@ -11,8 +11,20 @@ categories = { workspace = true }
 publish = true
 
 [features]
+default = []
+gemini = ["latchlm-gemini"]
+openai = ["latchlm-openai"]
+openrouter = ["latchlm-openrouter"]
+tracing = [
+    "latchlm-gemini/tracing",
+    "latchlm-openai/tracing",
+    "latchlm-openrouter/tracing",
+]
 
 [dependencies]
-latchlm-core = { version = "0.2.0" }
-
 thiserror = { workspace = true }
+
+latchlm-core = { version = "0.2.0" }
+latchlm-gemini = { path = "../gemini", version = "0.1", optional = true }
+latchlm-openai = { path = "../openai", version = "0.1", optional = true }
+latchlm-openrouter = { path = "../openrouter", version = "0.1", optional = true }
