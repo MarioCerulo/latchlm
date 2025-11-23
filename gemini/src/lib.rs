@@ -8,7 +8,7 @@
 use std::{future::ready, sync::Arc};
 
 use eventsource_stream::Eventsource;
-use futures::{StreamExt, stream::BoxStream};
+use futures::{FutureExt, StreamExt, stream::BoxStream};
 use latchlm_core::{AiModel, AiProvider, AiRequest, AiResponse, BoxFuture, Error, Result};
 use latchlm_macros::AiModel;
 
@@ -368,6 +368,29 @@ impl AiProvider for Gemini {
         };
 
         Box::pin(async move { self.request(model, request).await.map(Into::into) })
+    }
+
+    fn send_streaming(
+        &self,
+        model: &dyn AiModel,
+        request: AiRequest,
+    ) -> BoxStream<'_, Result<AiResponse>> {
+        let Some(model) = model.downcast::<GeminiModel>() else {
+            let model_name = model.as_ref().to_owned();
+            return Box::pin(futures::stream::once(async move {
+                Err(Error::InvalidModelError(model_name))
+            }));
+        };
+
+        Box::pin(
+            async move {
+                match self.streaming_request(model, request).await {
+                    Ok(stream) => stream.map(|res| res.map(Into::into)).boxed(),
+                    Err(e) => futures::stream::once(async move { Err(e.into()) }).boxed(),
+                }
+            }
+            .flatten_stream(),
+        )
     }
 }
 
