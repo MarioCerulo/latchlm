@@ -12,6 +12,7 @@
 pub mod error;
 pub use error::*;
 
+use futures::stream::BoxStream;
 use serde::{Deserialize, Serialize};
 use std::{borrow::Cow, future::Future, pin::Pin, sync::Arc};
 
@@ -138,6 +139,12 @@ pub trait AiProvider: Send + Sync {
         model: &dyn AiModel,
         request: AiRequest,
     ) -> BoxFuture<'_, Result<AiResponse>>;
+
+    fn send_streaming(
+        &self,
+        model: &dyn AiModel,
+        request: AiRequest,
+    ) -> BoxStream<'_, Result<AiResponse>>;
 }
 
 impl<T> AiProvider for &T
@@ -150,6 +157,14 @@ where
         request: AiRequest,
     ) -> BoxFuture<'_, Result<AiResponse>> {
         (**self).send_request(model, request)
+    }
+
+    fn send_streaming(
+        &self,
+        model: &dyn AiModel,
+        request: AiRequest,
+    ) -> BoxStream<'_, Result<AiResponse>> {
+        (**self).send_streaming(model, request)
     }
 }
 
@@ -164,6 +179,14 @@ where
     ) -> BoxFuture<'_, Result<AiResponse>> {
         (**self).send_request(model, request)
     }
+
+    fn send_streaming(
+        &self,
+        model: &dyn AiModel,
+        request: AiRequest,
+    ) -> BoxStream<'_, Result<AiResponse>> {
+        (**self).send_streaming(model, request)
+    }
 }
 
 impl<T> AiProvider for Box<T>
@@ -177,6 +200,14 @@ where
     ) -> BoxFuture<'_, Result<AiResponse>> {
         (**self).send_request(model, request)
     }
+
+    fn send_streaming(
+        &self,
+        model: &dyn AiModel,
+        request: AiRequest,
+    ) -> BoxStream<'_, Result<AiResponse>> {
+        (**self).send_streaming(model, request)
+    }
 }
 
 impl<T> AiProvider for Arc<T>
@@ -189,5 +220,13 @@ where
         request: AiRequest,
     ) -> BoxFuture<'_, Result<AiResponse>> {
         (**self).send_request(model, request)
+    }
+
+    fn send_streaming(
+        &self,
+        model: &dyn AiModel,
+        request: AiRequest,
+    ) -> BoxStream<'_, Result<AiResponse>> {
+        (**self).send_streaming(model, request)
     }
 }
