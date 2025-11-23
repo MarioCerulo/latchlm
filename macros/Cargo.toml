@@ -1,6 +1,7 @@
 [package]
 name = "latchlm-macros"
 version = "0.1.0"
+description = "Macros for LatchLM"
 edition.workspace = true
 license.workspace = true
 authors.workspace = true
@@ -20,7 +21,7 @@ proc-macro2 = "1"
 trybuild = "1"
 serde.workspace = true
 
-latchlm-core = { path = "../core", version = "0.2.0" }
+latchlm-core = { path = "../core", version = "0.3.0" }
 
 [lints]
 workspace = true
