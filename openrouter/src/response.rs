@@ -122,6 +122,19 @@ pub struct OpenrouterStreamResponse {
     pub usage: Option<Usage>,
 }
 
+impl From<OpenrouterStreamResponse> for AiResponse {
+    fn from(response: OpenrouterStreamResponse) -> Self {
+        AiResponse {
+            text: response.extract_text(),
+            token_usage: TokenUsage {
+                input_tokens: response.usage.as_ref().map(|usage| usage.prompt_tokens),
+                output_tokens: response.usage.as_ref().map(|usage| usage.completion_tokens),
+                total_tokens: response.usage.as_ref().map(|usage| usage.total_tokens),
+            },
+        }
+    }
+}
+
 impl OpenrouterStreamResponse {
     #[must_use]
     pub fn extract_text(&self) -> String {

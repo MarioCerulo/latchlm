@@ -7,7 +7,7 @@
 //! This crate implements a client for interacting with the OpenRouter API.
 
 use eventsource_stream::Eventsource;
-use futures::{StreamExt, stream::BoxStream};
+use futures::{FutureExt, StreamExt, stream::BoxStream};
 use latchlm_core::{AiModel, AiProvider, AiRequest, AiResponse, BoxFuture, Error, ModelId, Result};
 use reqwest::{Client, Url};
 use secrecy::{ExposeSecret, SecretString};
@@ -510,5 +510,28 @@ impl AiProvider for Openrouter {
 
         let model = model.clone();
         Box::pin(async move { self.request(model, request).await.map(Into::into) })
+    }
+
+    fn send_streaming(
+        &self,
+        model: &dyn AiModel,
+        request: AiRequest,
+    ) -> BoxStream<'_, Result<AiResponse>> {
+        let Some(model) = model.downcast::<OpenrouterModel>() else {
+            let model_name = model.as_ref().to_owned();
+            return Box::pin(futures::stream::once(async {
+                Err(Error::InvalidModelError(model_name))
+            }));
+        };
+
+        Box::pin(
+            async move {
+                match self.streaming_request(model, request).await {
+                    Ok(stream) => stream.map(|res| res.map(Into::into)).boxed(),
+                    Err(err) => futures::stream::once(async move { Err(err) }).boxed(),
+                }
+            }
+            .flatten_stream(),
+        )
     }
 }
