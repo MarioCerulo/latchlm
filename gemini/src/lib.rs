@@ -280,13 +280,13 @@ impl Gemini {
             .await?;
 
         if !response.status().is_success() {
-            #[cfg(feature = "tracing")]
-            tracing::error!("API error: {}", response.status());
+            let status = response.status().as_u16();
+            let message = response.text().await?;
 
-            return Err(Error::ApiError {
-                status: response.status().as_u16(),
-                message: response.text().await?,
-            });
+            #[cfg(feature = "tracing")]
+            tracing::error!("API error: {}", &message);
+
+            return Err(Error::ApiError { status, message });
         }
 
         let bytes = response.bytes().await?;
@@ -339,8 +339,6 @@ impl Gemini {
             .send()
             .await?;
 
-        // WARNING: this implementation assumes that each event from the API
-        // is delivered as a single line starting with 'data: ', followed by a complete JSON object.
         let stream = response
             .bytes_stream()
             .eventsource()

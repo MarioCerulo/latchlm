@@ -369,13 +369,13 @@ impl Openrouter {
             .await?;
 
         if !response.status().is_success() {
-            #[cfg(feature = "tracing")]
-            tracing::error!("API error: {}", response.text().await?);
+            let status = response.status().as_u16();
+            let message = response.text().await?;
 
-            return Err(Error::ApiError {
-                status: response.status().as_u16(),
-                message: response.text().await?,
-            });
+            #[cfg(feature = "tracing")]
+            tracing::error!("API error: {}", message);
+
+            return Err(Error::ApiError { status, message });
         }
 
         let bytes = response.bytes().await?;
@@ -505,13 +505,13 @@ impl Openrouter {
         let response = self.client.get(url).send().await?;
 
         if !response.status().is_success() {
-            #[cfg(feature = "tracing")]
-            tracing::error!("API request failed with status {}", response.status());
+            let status = response.status().as_u16();
+            let message = response.text().await?;
 
-            return Err(Error::ApiError {
-                status: response.status().as_u16(),
-                message: response.text().await?,
-            });
+            #[cfg(feature = "tracing")]
+            tracing::error!("API request failed: {}", &message);
+
+            return Err(Error::ApiError { status, message });
         }
 
         let response: ModelsList = response.json().await?;
@@ -521,7 +521,7 @@ impl Openrouter {
 }
 
 impl AiProvider for Openrouter {
-    #[cfg_attr(feature = "tracing", tracing::instrument(skip(self, model, request)))]
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip(self, model)))]
     fn send_request(
         &self,
         model: &dyn AiModel,
@@ -540,7 +540,7 @@ impl AiProvider for Openrouter {
         Box::pin(async move { self.request(model, request).await.map(Into::into) })
     }
 
-    #[cfg_attr(feature = "tracing", tracing::instrument(skip(self, model, request)))]
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip(self, model)))]
     fn send_streaming(
         &self,
         model: &dyn AiModel,
