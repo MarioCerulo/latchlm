@@ -1,6 +1,7 @@
 [package]
 name = "latchlm-openrouter"
 version = "0.1.0"
+description = "OpenRouter provider implementation for LatchLM"
 edition.workspace = true
 license.workspace = true
 authors.workspace = true
@@ -24,7 +25,7 @@ secrecy.workspace = true
 futures.workspace = true
 eventsource-stream.workspace = true
 tracing = { workspace = true, optional = true }
-latchlm-core = { path = "../core", version = "0.2.0" }
+latchlm-core = { path = "../core", version = "0.3.0" }
 
 [dev-dependencies]
 wiremock.workspace = true
