@@ -386,7 +386,7 @@ impl AiProvider for Gemini {
             async move {
                 match self.streaming_request(model, request).await {
                     Ok(stream) => stream.map(|res| res.map(Into::into)).boxed(),
-                    Err(e) => futures::stream::once(async move { Err(e.into()) }).boxed(),
+                    Err(e) => futures::stream::once(async move { Err(e) }).boxed(),
                 }
             }
             .flatten_stream(),

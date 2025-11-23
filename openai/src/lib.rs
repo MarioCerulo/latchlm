@@ -393,7 +393,7 @@ impl AiProvider for Openai {
         let Some(model) = model.downcast::<OpenaiModel>() else {
             let model_name = model.as_ref().to_string();
             return Box::pin(futures::stream::once(async {
-                Err(Error::InvalidModelError(model_name.into()))
+                Err(Error::InvalidModelError(model_name))
             }));
         };
 

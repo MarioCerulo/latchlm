@@ -124,7 +124,7 @@ pub struct OpenrouterStreamResponse {
 
 impl From<OpenrouterStreamResponse> for AiResponse {
     fn from(response: OpenrouterStreamResponse) -> Self {
-        AiResponse {
+        Self {
             text: response.extract_text(),
             token_usage: TokenUsage {
                 input_tokens: response.usage.as_ref().map(|usage| usage.prompt_tokens),
