@@ -20,7 +20,7 @@ tracing = ["dep:tracing"]
 [dependencies]
 serde.workspace = true
 serde_json.workspace = true
-reqwest.workspace = true
+reqwest = { workspace = true, features = ["stream"] }
 secrecy.workspace = true
 futures.workspace = true
 eventsource-stream.workspace = true
