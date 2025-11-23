@@ -283,6 +283,7 @@ impl Openai {
     ///
     /// [`Error`]: latchlm_core::Error
     #[allow(clippy::expect_used)]
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip(self)))]
     pub async fn request(&self, model: OpenaiModel, request: AiRequest) -> Result<OpenaiResponse> {
         let mut header_map = HeaderMap::new();
         header_map.insert(CONTENT_TYPE, HeaderValue::from_static("application/json"));
@@ -303,6 +304,9 @@ impl Openai {
             .await?;
 
         if !response.status().is_success() {
+            #[cfg(feature = "tracing")]
+            tracing::error!("API error: {:?}", response.text().await?);
+
             return Err(Error::ApiError {
                 status: response.status().as_u16(),
                 message: response.text().await?,
@@ -310,6 +314,9 @@ impl Openai {
         }
 
         let bytes = response.bytes().await?;
+
+        #[cfg(feature = "tracing")]
+        tracing::debug!("Received bytes: {:?}", bytes);
 
         let response: OpenaiResponse = serde_json::from_slice(&bytes)?;
 
@@ -323,6 +330,7 @@ impl Openai {
     /// * `model` - The model to use for the request.
     /// * `request` - The request to send.
     #[allow(clippy::expect_used)]
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip(self)))]
     pub async fn streaming_request(
         &self,
         model: OpenaiModel,
@@ -347,6 +355,9 @@ impl Openai {
             .await?;
 
         if !response.status().is_success() {
+            #[cfg(feature = "tracing")]
+            tracing::error!("API error: {}", response.text().await?);
+
             return Err(Error::ApiError {
                 status: response.status().as_u16(),
                 message: response.text().await?,
@@ -355,8 +366,16 @@ impl Openai {
 
         let stream = response.bytes_stream().eventsource().map(|result| {
             let response = match result {
-                Ok(response) => response,
+                Ok(response) => {
+                    #[cfg(feature = "tracing")]
+                    tracing::debug!("Received response: {:?}", response);
+
+                    response
+                }
                 Err(err) => {
+                    #[cfg(feature = "tracing")]
+                    tracing::error!("Error receiving response: {}", err);
+
                     return Err(Error::ProviderError {
                         provider: "OpenAI".into(),
                         error: err.to_string(),
@@ -372,6 +391,7 @@ impl Openai {
 }
 
 impl AiProvider for Openai {
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip(self)))]
     fn send_request(
         &self,
         model: &dyn AiModel,
@@ -379,12 +399,17 @@ impl AiProvider for Openai {
     ) -> BoxFuture<'_, Result<AiResponse>> {
         let Some(model) = model.downcast::<OpenaiModel>() else {
             let model_name = model.as_ref();
+
+            #[cfg(feature = "tracing")]
+            tracing::error!("Invalid model type: {}", model_name);
+
             return Box::pin(ready(Err(Error::InvalidModelError(model_name.into()))));
         };
 
         Box::pin(async move { self.request(model, request).await.map(Into::into) })
     }
 
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip(self)))]
     fn send_streaming(
         &self,
         model: &dyn AiModel,
@@ -392,6 +417,10 @@ impl AiProvider for Openai {
     ) -> BoxStream<'_, Result<AiResponse>> {
         let Some(model) = model.downcast::<OpenaiModel>() else {
             let model_name = model.as_ref().to_string();
+
+            #[cfg(feature = "tracing")]
+            tracing::error!("Invalid model type: {}", model_name);
+
             return Box::pin(futures::stream::once(async {
                 Err(Error::InvalidModelError(model_name))
             }));

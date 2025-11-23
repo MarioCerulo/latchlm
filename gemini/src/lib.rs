@@ -250,6 +250,7 @@ impl Gemini {
     /// ```
     /// [`Error`]: latchlm_core::Error
     #[allow(clippy::expect_used)]
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip(self)))]
     pub async fn request(&self, model: GeminiModel, request: AiRequest) -> Result<GeminiResponse> {
         let url = self
             .base_url
@@ -279,6 +280,9 @@ impl Gemini {
             .await?;
 
         if !response.status().is_success() {
+            #[cfg(feature = "tracing")]
+            tracing::error!("API error: {}", response.status());
+
             return Err(Error::ApiError {
                 status: response.status().as_u16(),
                 message: response.text().await?,
@@ -286,6 +290,9 @@ impl Gemini {
         }
 
         let bytes = response.bytes().await?;
+
+        #[cfg(feature = "tracing")]
+        tracing::debug!("Received bytes: {:?}", bytes);
 
         let response: GeminiResponse = serde_json::from_slice(&bytes)?;
 
@@ -299,6 +306,7 @@ impl Gemini {
     /// * `model` - The model to use for the request.
     /// * `request` - The request to send.
     #[allow(clippy::expect_used)]
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip(self)))]
     pub async fn streaming_request(
         &self,
         model: GeminiModel,
@@ -338,8 +346,16 @@ impl Gemini {
             .eventsource()
             .filter_map(|event| async {
                 let event = match event {
-                    Ok(event) => event,
+                    Ok(event) => {
+                        #[cfg(feature = "tracing")]
+                        tracing::debug!("Received event: {:?}", event);
+
+                        event
+                    }
                     Err(err) => {
+                        #[cfg(feature = "tracing")]
+                        tracing::error!("Error receiving event: {:?}", err);
+
                         return Some(Err(Error::ProviderError {
                             provider: "Gemini".to_string(),
                             error: err.to_string(),
@@ -357,6 +373,7 @@ impl Gemini {
 }
 
 impl AiProvider for Gemini {
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip(self, model)))]
     fn send_request(
         &self,
         model: &dyn AiModel,
@@ -364,12 +381,17 @@ impl AiProvider for Gemini {
     ) -> BoxFuture<'_, Result<AiResponse>> {
         let Some(model) = model.downcast::<GeminiModel>() else {
             let model_name = model.as_ref().to_owned();
+
+            #[cfg(feature = "tracing")]
+            tracing::error!("Invalid model type: {}", model_name);
+
             return Box::pin(ready(Err(Error::InvalidModelError(model_name))));
         };
 
         Box::pin(async move { self.request(model, request).await.map(Into::into) })
     }
 
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip(self, model)))]
     fn send_streaming(
         &self,
         model: &dyn AiModel,
@@ -377,6 +399,10 @@ impl AiProvider for Gemini {
     ) -> BoxStream<'_, Result<AiResponse>> {
         let Some(model) = model.downcast::<GeminiModel>() else {
             let model_name = model.as_ref().to_owned();
+
+            #[cfg(feature = "tracing")]
+            tracing::error!("Invalid model type: {}", model_name);
+
             return Box::pin(futures::stream::once(async move {
                 Err(Error::InvalidModelError(model_name))
             }));

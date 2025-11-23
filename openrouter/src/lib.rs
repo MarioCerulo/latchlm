@@ -321,6 +321,7 @@ impl Openrouter {
     /// [`AiRequest`]: latchlm_core::AiRequest
     /// [`Error`]: latchlm_core::Error
     #[allow(clippy::expect_used)]
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip(self)))]
     pub async fn request(
         &self,
         model: OpenrouterModel,
@@ -368,6 +369,9 @@ impl Openrouter {
             .await?;
 
         if !response.status().is_success() {
+            #[cfg(feature = "tracing")]
+            tracing::error!("API error: {}", response.text().await?);
+
             return Err(Error::ApiError {
                 status: response.status().as_u16(),
                 message: response.text().await?,
@@ -375,6 +379,9 @@ impl Openrouter {
         }
 
         let bytes = response.bytes().await?;
+
+        #[cfg(feature = "tracing")]
+        tracing::debug!("Received response: {bytes:?}");
 
         let response = serde_json::from_slice(&bytes)?;
 
@@ -388,6 +395,7 @@ impl Openrouter {
     /// * `model` - The model to use for the request.
     /// * `request` - The request to send.
     #[allow(clippy::expect_used)]
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip(self)))]
     pub async fn streaming_request(
         &self,
         model: OpenrouterModel,
@@ -436,6 +444,9 @@ impl Openrouter {
             .await?;
 
         if !response.status().is_success() {
+            #[cfg(feature = "tracing")]
+            tracing::error!("OpenRouter API error: {}", response.status());
+
             return Err(Error::ApiError {
                 status: response.status().as_u16(),
                 message: response.text().await?,
@@ -447,8 +458,16 @@ impl Openrouter {
             .eventsource()
             .filter_map(|result| async {
                 let event = match result {
-                    Ok(event) => event,
+                    Ok(event) => {
+                        #[cfg(feature = "tracing")]
+                        tracing::debug!("OpenRouter API event: {:?}", event);
+
+                        event
+                    }
                     Err(err) => {
+                        #[cfg(feature = "tracing")]
+                        tracing::error!("OpenRouter error: {}", err);
+
                         return Some(Err(Error::ProviderError {
                             provider: "OpenRouter".to_string(),
                             error: err.to_string(),
@@ -480,11 +499,15 @@ impl Openrouter {
     ///
     /// [`Error`]: latchlm_core::Error
     #[allow(clippy::expect_used)]
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip(self)))]
     pub async fn models(&self) -> Result<Vec<ModelId<'_>>> {
         let url = self.base_url.join("models").expect("Failed to join URL");
         let response = self.client.get(url).send().await?;
 
         if !response.status().is_success() {
+            #[cfg(feature = "tracing")]
+            tracing::error!("API request failed with status {}", response.status());
+
             return Err(Error::ApiError {
                 status: response.status().as_u16(),
                 message: response.text().await?,
@@ -498,6 +521,7 @@ impl Openrouter {
 }
 
 impl AiProvider for Openrouter {
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip(self, model, request)))]
     fn send_request(
         &self,
         model: &dyn AiModel,
@@ -505,6 +529,10 @@ impl AiProvider for Openrouter {
     ) -> BoxFuture<'_, Result<AiResponse>> {
         let Some(model) = model.downcast::<OpenrouterModel>() else {
             let model_name = model.as_ref();
+
+            #[cfg(feature = "tracing")]
+            tracing::error!("Invalid model type: {}", model_name);
+
             return Box::pin(ready(Err(Error::InvalidModelError(model_name.into()))));
         };
 
@@ -512,6 +540,7 @@ impl AiProvider for Openrouter {
         Box::pin(async move { self.request(model, request).await.map(Into::into) })
     }
 
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip(self, model, request)))]
     fn send_streaming(
         &self,
         model: &dyn AiModel,
@@ -519,6 +548,10 @@ impl AiProvider for Openrouter {
     ) -> BoxStream<'_, Result<AiResponse>> {
         let Some(model) = model.downcast::<OpenrouterModel>() else {
             let model_name = model.as_ref().to_owned();
+
+            #[cfg(feature = "tracing")]
+            tracing::error!("Invalid model type: {}", model_name);
+
             return Box::pin(futures::stream::once(async {
                 Err(Error::InvalidModelError(model_name))
             }));
