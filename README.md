@@ -10,13 +10,19 @@
 - **Extensible:** Add new providers and models by implementing simple traits.
 - **Unified API:** Consistent request/response types across providers.
 
+## Supported Providers
+
+- Google Gemini
+- OpenAI
+- OpenRouter
+
 ## Getting Started
 
 Add LatchLM to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-latchlm = "0.1"
+latchlm = "0.2"
 ```
 
 ## License
