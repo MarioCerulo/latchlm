@@ -8,7 +8,7 @@
 use std::{future::ready, sync::Arc};
 
 use eventsource_stream::Eventsource;
-use futures::{StreamExt, stream::BoxStream};
+use futures::{FutureExt, StreamExt, stream::BoxStream};
 use latchlm_core::{AiModel, AiProvider, AiRequest, AiResponse, BoxFuture, Error, Result};
 use latchlm_macros::AiModel;
 use reqwest::header::{AUTHORIZATION, CONTENT_TYPE, HeaderMap, HeaderValue};
@@ -383,6 +383,29 @@ impl AiProvider for Openai {
         };
 
         Box::pin(async move { self.request(model, request).await.map(Into::into) })
+    }
+
+    fn send_streaming(
+        &self,
+        model: &dyn AiModel,
+        request: AiRequest,
+    ) -> BoxStream<'_, Result<AiResponse>> {
+        let Some(model) = model.downcast::<OpenaiModel>() else {
+            let model_name = model.as_ref().to_string();
+            return Box::pin(futures::stream::once(async {
+                Err(Error::InvalidModelError(model_name.into()))
+            }));
+        };
+
+        Box::pin(
+            async move {
+                match self.streaming_request(model, request).await {
+                    Ok(stream) => stream.map(|res| res.map(Into::into)).boxed(),
+                    Err(err) => futures::stream::once(async move { Err(err) }).boxed(),
+                }
+            }
+            .flatten_stream(),
+        )
     }
 }
 

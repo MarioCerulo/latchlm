@@ -312,6 +312,30 @@ pub enum OpenaiStreamResponse {
     },
 }
 
+impl From<OpenaiStreamResponse> for AiResponse {
+    fn from(response: OpenaiStreamResponse) -> Self {
+        match response {
+            OpenaiStreamResponse::TextDelta { delta, .. }
+            | OpenaiStreamResponse::OutputTextDelta { delta, .. } => Self {
+                text: delta,
+                token_usage: TokenUsage::default(),
+            },
+            OpenaiStreamResponse::ResponseCompleted { response, .. } => Self {
+                text: "".to_string(),
+                token_usage: TokenUsage {
+                    input_tokens: response.usage.as_ref().map(|usage| usage.input_tokens),
+                    output_tokens: response.usage.as_ref().map(|usage| usage.output_tokens),
+                    total_tokens: response.usage.as_ref().map(|usage| usage.total_tokens),
+                },
+            },
+            _ => Self {
+                text: String::new(),
+                token_usage: TokenUsage::default(),
+            },
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
